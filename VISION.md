@@ -21,7 +21,6 @@ Priority:
 Next priorities:
 
 - Add README setup notes for Xcode, CocoaPods, and simulator expectations
-- Fix startup behavior so recipe data is loaded before card removal
 - Document the intended persistence path for saved recipes
 - Modernize Swift syntax in a dedicated pass
 

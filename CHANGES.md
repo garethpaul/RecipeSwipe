@@ -9,3 +9,5 @@
   name `photo`.
 - Replaced the machine-local bridging header setting with the repo-relative
   `RecipeSwipe/BridgeHeader.h` path.
+- Deferred initial card construction until the recipe fetch callback populates
+  local sample data, with validator coverage for that startup sequence.

@@ -11,6 +11,27 @@ def rel(path)
   Pathname.new(path).relative_path_from(ROOT).to_s
 end
 
+def swift_method_source(source, signature)
+  start_index = source.index(signature)
+  return nil unless start_index
+
+  brace_index = source.index('{', start_index)
+  return nil unless brace_index
+
+  depth = 0
+  index = brace_index
+  while index < source.length
+    character = source[index, 1]
+    depth += 1 if character == '{'
+    depth -= 1 if character == '}'
+    return source[start_index..index] if depth.zero?
+
+    index += 1
+  end
+
+  nil
+end
+
 failures = []
 
 swift_files = Dir.glob(ROOT.join('{RecipeSwipe,RecipeSwipeTests}/**/*.swift')).sort
@@ -84,6 +105,30 @@ if project_file.file?
   end
 else
   failures << 'RecipeSwipe.xcodeproj/project.pbxproj is missing'
+end
+
+picker_controller = ROOT.join('RecipeSwipe/RecipePickerViewController.swift')
+if picker_controller.file?
+  picker_source = picker_controller.read
+  view_did_load_section = swift_method_source(picker_source, 'override func viewDidLoad()')
+
+  if view_did_load_section.nil?
+    failures << 'RecipePickerViewController.viewDidLoad could not be validated'
+  else
+    unless view_did_load_section.include?('self.loadInitialRecipeCards()')
+      failures << 'RecipePickerViewController must load initial cards from the recipe fetch callback'
+    end
+
+    if view_did_load_section.include?('removeAtIndex')
+      failures << 'RecipePickerViewController.viewDidLoad must not remove recipes before fetch completion'
+    end
+  end
+
+  unless picker_source.include?('func loadInitialRecipeCards() -> Void')
+    failures << 'RecipePickerViewController must define loadInitialRecipeCards()'
+  end
+else
+  failures << 'RecipeSwipe/RecipePickerViewController.swift is missing'
 end
 
 if failures.empty?

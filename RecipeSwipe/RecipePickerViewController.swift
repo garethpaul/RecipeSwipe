@@ -22,21 +22,31 @@ class RecipePickerViewController: UIViewController, MDCSwipeToChooseDelegate {
     override func viewDidLoad() {
         super.viewDidLoad()
 
-        // Fetch some lawyers
+        // Fetch local sample recipes before constructing card views.
         APIClient.fetchRecpes({(fetchedRecipes: Array<Recipe>) -> Void in
             self.recipes = fetchedRecipes
+            self.loadInitialRecipeCards()
+            self.constructBackground()
+            self.constructNopeButton()
+            self.constructLikeButton()
         })
+    }
 
-        // Setup initial card views
+    func loadInitialRecipeCards() -> Void {
+        if(self.recipes.count == 0) {
+            bottomCardView = UIView(frame: bottomCardViewFrame())
+            return
+        }
+
         topCardView = createRecipeView(topCardViewFrame(), recipe: self.recipes.removeAtIndex(0))
         self.view.addSubview(topCardView)
 
-        bottomCardView = createRecipeView(bottomCardViewFrame(), recipe: self.recipes.removeAtIndex(0))
-        self.view.insertSubview(bottomCardView, belowSubview: topCardView)
-
-        constructBackground()
-        constructNopeButton()
-        constructLikeButton()
+        if(self.recipes.count > 0) {
+            bottomCardView = createRecipeView(bottomCardViewFrame(), recipe: self.recipes.removeAtIndex(0))
+            self.view.insertSubview(bottomCardView, belowSubview: topCardView)
+        } else {
+            bottomCardView = UIView(frame: bottomCardViewFrame())
+        }
     }
 
     // TODO: save in CoreData
@@ -82,7 +92,7 @@ class RecipePickerViewController: UIViewController, MDCSwipeToChooseDelegate {
                 completion: nil
             )
         } else {
-            bottomCardView = UIView()
+            bottomCardView = UIView(frame: bottomCardViewFrame())
         }
     }
 
