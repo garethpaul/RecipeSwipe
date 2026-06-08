@@ -43,3 +43,6 @@ preferences local unless an explicit, documented backend is introduced.
 - Real user data in fixtures
 - Broad Swift rewrites without behavior checks
 - Network API calls before the data contract is documented
+
+This list is a roadmap guardrail, not a permanent rule.
+Strong user demand and strong technical rationale can change it.
