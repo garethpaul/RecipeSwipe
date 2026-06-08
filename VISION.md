@@ -37,7 +37,7 @@ Contribution rules:
 Recipe preference data can still reveal user habits. The prototype should keep
 preferences local unless an explicit, documented backend is introduced.
 
-## What We Will Not Merge For Now
+## What We Will Not Merge (For Now)
 
 - Silent upload of liked or skipped recipes
 - Real user data in fixtures
