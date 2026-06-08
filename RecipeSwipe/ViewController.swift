@@ -30,7 +30,7 @@ class ViewController: UIViewController, MDCSwipeToChooseDelegate {
         }
 
         var view = MDCSwipeToChooseView(frame: self.view.bounds, options: options)
-        view.imageView.image = UIImage(named: "photo.jpg")
+        view.imageView.image = UIImage(named: "photo")
         self.view.addSubview(view)
 
 
@@ -72,4 +72,3 @@ class ViewController: UIViewController, MDCSwipeToChooseDelegate {
 
 
 }
-

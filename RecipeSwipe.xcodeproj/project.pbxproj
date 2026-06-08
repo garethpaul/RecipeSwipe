@@ -447,7 +447,7 @@
 				INFOPLIST_FILE = RecipeSwipe/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				SWIFT_OBJC_BRIDGING_HEADER = /Users/gjones/workspace/github/RecipeSwipe/RecipeSwipe/BridgeHeader.h;
+				SWIFT_OBJC_BRIDGING_HEADER = RecipeSwipe/BridgeHeader.h;
 			};
 			name = Debug;
 		};
@@ -459,7 +459,7 @@
 				INFOPLIST_FILE = RecipeSwipe/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				SWIFT_OBJC_BRIDGING_HEADER = /Users/gjones/workspace/github/RecipeSwipe/RecipeSwipe/BridgeHeader.h;
+				SWIFT_OBJC_BRIDGING_HEADER = RecipeSwipe/BridgeHeader.h;
 			};
 			name = Release;
 		};

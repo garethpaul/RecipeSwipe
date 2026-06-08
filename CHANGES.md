@@ -1,0 +1,11 @@
+# Changes
+
+## 2026-06-08
+
+- Added a static iOS source validation gate for UIKit imports, asset catalog
+  references, CocoaPods lockfile consistency, and bridging-header project paths.
+- Fixed Swift files that used `UIImage` without importing UIKit.
+- Replaced a stale `UIImage(named: "photo.jpg")` lookup with the asset catalog
+  name `photo`.
+- Replaced the machine-local bridging header setting with the repo-relative
+  `RecipeSwipe/BridgeHeader.h` path.
