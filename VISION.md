@@ -10,7 +10,8 @@ The goal is to preserve the prototype while clarifying what must change before
 it becomes a real recipe app.
 
 Current baseline: `make check` runs static iOS source validation, optional
-Xcode build/test commands when available, and canonical `docs/plans` coverage.
+Xcode build/test commands when available, local recipe-data boundary checks, and
+canonical `docs/plans` coverage.
 
 The current focus is:
 
@@ -21,6 +22,7 @@ Priority:
 - Treat Swift, Xcode, and dependency versions as legacy
 - Maintain `make check` for static source validation and optional Xcode checks
 - Avoid adding network recipe fetching before data boundaries are documented
+- Keep network recipe-data markers out of Swift source until a contract exists
 - Keep empty placeholder card behavior safe when recipe data runs out
 - Keep completed maintenance plans under `docs/plans`
 

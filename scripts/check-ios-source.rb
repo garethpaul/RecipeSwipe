@@ -58,6 +58,13 @@ uikit_symbols = %w[
   UIImage UIImageView UIColor UIView UIViewController UILabel UIButton UIFont
   UIControlState UIViewAutoresizing UIViewContentMode NSTextAlignment
 ]
+network_markers = [
+  'NSURLSession',
+  'NSURLConnection',
+  'NSURLRequest',
+  'http://',
+  'https://'
+]
 
 swift_files.each do |path|
   source = File.read(path)
@@ -67,6 +74,14 @@ swift_files.each do |path|
   next if used_symbols.empty?
 
   failures << "#{rel(path)} uses UIKit types without importing UIKit: #{used_symbols.join(', ')}"
+end
+
+swift_files.each do |path|
+  source = File.read(path)
+  used_markers = network_markers.select { |marker| source.include?(marker) }
+  next if used_markers.empty?
+
+  failures << "#{rel(path)} introduces network recipe-data markers before a data contract exists: #{used_markers.join(', ')}"
 end
 
 asset_root = ROOT.join('RecipeSwipe/Images.xcassets')

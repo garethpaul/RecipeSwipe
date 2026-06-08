@@ -2,6 +2,8 @@
 
 ## 2026-06-08
 
+- Added a static local-data guard so Swift source cannot introduce network
+  recipe fetching before a data contract exists.
 - Added a guarded top-card swipe helper so like/skip buttons ignore empty
   placeholder cards after recipes run out.
 - Added a static iOS source validation gate for UIKit imports, asset catalog
