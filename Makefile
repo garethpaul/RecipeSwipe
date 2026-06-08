@@ -1,4 +1,4 @@
-.PHONY: lint test build verify
+.PHONY: build check lint test verify
 
 lint:
 	ruby scripts/check-ios-source.rb
@@ -18,3 +18,5 @@ build:
 	fi
 
 verify: lint test build
+
+check: verify

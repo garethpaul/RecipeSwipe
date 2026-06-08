@@ -16,6 +16,7 @@ Priority:
 - Preserve the swipe-card interaction and like/skip flow
 - Keep sample recipe data clearly local and fake
 - Treat Swift, Xcode, and dependency versions as legacy
+- Maintain `make check` for static source validation and optional Xcode checks
 - Avoid adding network recipe fetching before data boundaries are documented
 
 Next priorities:

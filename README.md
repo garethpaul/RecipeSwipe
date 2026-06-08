@@ -51,7 +51,7 @@ The setup commands above are derived from repository files. Legacy mobile, Pytho
 ## Testing and Verification
 
 - Xcode's test action or `xcodebuild test` with the appropriate scheme and destination
-- `make verify` runs static iOS source checks and uses `xcodebuild` when it is
+- `make check` runs static iOS source checks and uses `xcodebuild` when it is
   available locally.
 
 When the required SDK or runtime is unavailable, use static checks and source review first, then verify on a machine that has the matching platform toolchain.

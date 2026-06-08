@@ -4,6 +4,7 @@
 
 - Added a static iOS source validation gate for UIKit imports, asset catalog
   references, CocoaPods lockfile consistency, and bridging-header project paths.
+- Added `make check` as the shared repository verification alias.
 - Fixed Swift files that used `UIImage` without importing UIKit.
 - Replaced a stale `UIImage(named: "photo.jpg")` lookup with the asset catalog
   name `photo`.
