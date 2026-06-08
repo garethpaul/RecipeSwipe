@@ -169,12 +169,18 @@ class RecipePickerViewController: UIViewController, MDCSwipeToChooseDelegate {
         self.view.insertSubview(button, atIndex: 0)
     }
 
+    func swipeTopCard(direction: MDCSwipeDirection) -> Void {
+        if let recipeView = self.topCardView as? RecipePickerView {
+            recipeView.mdc_swipe(direction)
+        }
+    }
+
     func nopeTopCardView() {
-        self.topCardView.mdc_swipe(MDCSwipeDirection.Left)
+        self.swipeTopCard(MDCSwipeDirection.Left)
     }
 
     func likeTopCardView() {
-        self.topCardView.mdc_swipe(MDCSwipeDirection.Right)
+        self.swipeTopCard(MDCSwipeDirection.Right)
     }
 
     func constructBackground() {

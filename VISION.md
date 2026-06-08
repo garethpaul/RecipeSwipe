@@ -21,6 +21,7 @@ Priority:
 - Treat Swift, Xcode, and dependency versions as legacy
 - Maintain `make check` for static source validation and optional Xcode checks
 - Avoid adding network recipe fetching before data boundaries are documented
+- Keep empty placeholder card behavior safe when recipe data runs out
 - Keep completed maintenance plans under `docs/plans`
 
 Next priorities:

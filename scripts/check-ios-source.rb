@@ -7,6 +7,7 @@ require 'set'
 
 ROOT = Pathname.new(__dir__).parent.expand_path
 CANONICAL_PLAN = ROOT.join('docs/plans/2026-06-08-recipeswipe-baseline.md')
+DOCS_PLANS = Dir.glob(ROOT.join('docs/plans/*.md')).sort
 
 def rel(path)
   Pathname.new(path).relative_path_from(ROOT).to_s
@@ -35,11 +36,19 @@ end
 
 failures = []
 
-if CANONICAL_PLAN.file?
-  plan = CANONICAL_PLAN.read
+if DOCS_PLANS.empty?
+  failures << 'docs/plans must contain at least one completed plan'
+end
+
+DOCS_PLANS.each do |plan_path|
+  plan = File.read(plan_path)
   unless plan.include?('Status: Completed') && plan.include?('make check')
-    failures << "#{rel(CANONICAL_PLAN)} must record completed status and make check verification"
+    failures << "#{rel(plan_path)} must record completed status and make check verification"
   end
+end
+
+if CANONICAL_PLAN.file?
+  # The baseline plan stays canonical for the historical validator coverage.
 else
   failures << "#{rel(CANONICAL_PLAN)} is missing"
 end
@@ -136,6 +145,19 @@ if picker_controller.file?
 
   unless picker_source.include?('func loadInitialRecipeCards() -> Void')
     failures << 'RecipePickerViewController must define loadInitialRecipeCards()'
+  end
+
+  unless picker_source.include?('func swipeTopCard(direction: MDCSwipeDirection) -> Void')
+    failures << 'RecipePickerViewController must define guarded swipeTopCard(direction:)'
+  end
+
+  if picker_source.include?('self.topCardView.mdc_swipe')
+    failures << 'RecipePickerViewController button actions must not swipe topCardView without a RecipePickerView guard'
+  end
+
+  unless picker_source.include?('if let recipeView = self.topCardView as? RecipePickerView') &&
+         picker_source.include?('recipeView.mdc_swipe(direction)')
+    failures << 'RecipePickerViewController swipeTopCard must guard empty placeholder cards'
   end
 else
   failures << 'RecipeSwipe/RecipePickerViewController.swift is missing'

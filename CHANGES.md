@@ -2,6 +2,8 @@
 
 ## 2026-06-08
 
+- Added a guarded top-card swipe helper so like/skip buttons ignore empty
+  placeholder cards after recipes run out.
 - Added a static iOS source validation gate for UIKit imports, asset catalog
   references, CocoaPods lockfile consistency, and bridging-header project paths.
 - Added `make check` as the shared repository verification alias.
@@ -13,4 +15,4 @@
 - Deferred initial card construction until the recipe fetch callback populates
   local sample data, with validator coverage for that startup sequence.
 - Added canonical `docs/plans` coverage and made the static source validator
-  require the completed baseline plan.
+  require completed plans.

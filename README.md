@@ -59,7 +59,8 @@ The setup commands above are derived from repository files. Legacy mobile, Pytho
 - `make check` runs static iOS source checks and uses `xcodebuild` when it is
   available locally.
 - The static validator also requires a completed canonical plan under
-  `docs/plans`.
+  `docs/plans` and checks that empty placeholder cards are not swiped by the
+  like/skip buttons.
 
 When the required SDK or runtime is unavailable, use static checks and source review first, then verify on a machine that has the matching platform toolchain.
 
@@ -79,6 +80,8 @@ When the required SDK or runtime is unavailable, use static checks and source re
 - See `VISION.md` for project direction and contribution guardrails.
 - See `docs/plans/2026-06-08-recipeswipe-baseline.md` for the canonical
   static validation and deferred-card-loading baseline.
+- See `docs/plans/2026-06-08-empty-card-swipe-guard.md` for the placeholder
+  card swipe guard baseline.
 
 ## Contributing
 
