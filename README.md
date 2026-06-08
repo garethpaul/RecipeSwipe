@@ -16,6 +16,11 @@ This README is based on the checked-in source, manifests, scripts, and repositor
 - `RecipeSwipe` - source or example code
 - `RecipeSwipe.xcodeproj` - Xcode project file
 - `RecipeSwipeTests` - source or example code
+- `CHANGES.md` - notable maintenance changes
+- `Makefile` - local verification entry points
+- `docs/plans` - canonical completed maintenance plans
+- `plans` - completed maintenance plans
+- `scripts` - deterministic static iOS validation checks
 - `SECURITY.md` - security reporting and disclosure guidance
 - `VISION.md` - project direction and maintenance guardrails
 
@@ -53,6 +58,8 @@ The setup commands above are derived from repository files. Legacy mobile, Pytho
 - Xcode's test action or `xcodebuild test` with the appropriate scheme and destination
 - `make check` runs static iOS source checks and uses `xcodebuild` when it is
   available locally.
+- The static validator also requires a completed canonical plan under
+  `docs/plans`.
 
 When the required SDK or runtime is unavailable, use static checks and source review first, then verify on a machine that has the matching platform toolchain.
 
@@ -70,6 +77,8 @@ When the required SDK or runtime is unavailable, use static checks and source re
 - This looks like an Apple platform project or sample. Xcode, Swift, CocoaPods, and deployment target versions may need to match the original project era.
 - See `SECURITY.md` for vulnerability reporting and safe research guidance.
 - See `VISION.md` for project direction and contribution guardrails.
+- See `docs/plans/2026-06-08-recipeswipe-baseline.md` for the canonical
+  static validation and deferred-card-loading baseline.
 
 ## Contributing
 

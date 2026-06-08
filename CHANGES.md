@@ -12,3 +12,5 @@
   `RecipeSwipe/BridgeHeader.h` path.
 - Deferred initial card construction until the recipe fetch callback populates
   local sample data, with validator coverage for that startup sequence.
+- Added canonical `docs/plans` coverage and made the static source validator
+  require the completed baseline plan.

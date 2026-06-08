@@ -6,6 +6,7 @@ require 'pathname'
 require 'set'
 
 ROOT = Pathname.new(__dir__).parent.expand_path
+CANONICAL_PLAN = ROOT.join('docs/plans/2026-06-08-recipeswipe-baseline.md')
 
 def rel(path)
   Pathname.new(path).relative_path_from(ROOT).to_s
@@ -33,6 +34,15 @@ def swift_method_source(source, signature)
 end
 
 failures = []
+
+if CANONICAL_PLAN.file?
+  plan = CANONICAL_PLAN.read
+  unless plan.include?('Status: Completed') && plan.include?('make check')
+    failures << "#{rel(CANONICAL_PLAN)} must record completed status and make check verification"
+  end
+else
+  failures << "#{rel(CANONICAL_PLAN)} is missing"
+end
 
 swift_files = Dir.glob(ROOT.join('{RecipeSwipe,RecipeSwipeTests}/**/*.swift')).sort
 uikit_symbols = %w[
