@@ -34,6 +34,11 @@ Contribution rules:
 
 ## Security And Responsible Use
 
+Canonical security policy and reporting:
+
+- [`SECURITY.md`](SECURITY.md)
+
+
 Recipe preference data can still reveal user habits. The prototype should keep
 preferences local unless an explicit, documented backend is introduced.
 
