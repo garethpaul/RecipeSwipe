@@ -27,6 +27,7 @@ Priority:
 - Keep empty-state background artwork aligned to the card frame
 - Keep swipe delegate callbacks guarded before advancing the card stack
 - Keep sample recipe image loading guarded against missing assets
+- Keep optional recipe values guarded before saving, skipping, or displaying
 - Keep completed maintenance plans under `docs/plans`
 
 Next priorities:

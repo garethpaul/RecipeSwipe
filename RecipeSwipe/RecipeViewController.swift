@@ -10,8 +10,8 @@ class RecipeViewController: UIViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
 
-        if(self.recipe != nil) {
-            self.imageView.image = recipe!.image
+        if let recipe = self.recipe {
+            self.imageView.image = recipe.image
         }
     }
 }

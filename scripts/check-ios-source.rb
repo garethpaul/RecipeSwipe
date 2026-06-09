@@ -95,6 +95,10 @@ swift_files.each do |path|
     failures << "#{rel(path)} force-unwraps UIImage(named:); use a checked fallback before creating recipe cards"
   end
 
+  if source.include?('recipe!')
+    failures << "#{rel(path)} force-unwraps a Recipe optional; unwrap recipe with if let before using it"
+  end
+
   source.scan(/UIImage\s*\(\s*named:\s*"([^"]+)"/).flatten.each do |image_name|
     next if asset_names.include?(image_name)
 

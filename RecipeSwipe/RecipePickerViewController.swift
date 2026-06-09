@@ -62,13 +62,13 @@ class RecipePickerViewController: UIViewController, MDCSwipeToChooseDelegate {
     func view(view: UIView!, wasChosenWithDirection direction: MDCSwipeDirection) {
         if let rpv = view as? RecipePickerView {
             if (direction == MDCSwipeDirection.Right) {
-                if(rpv.recipe != nil) {
-                    saveRecipe(rpv.recipe!)
+                if let recipe = rpv.recipe {
+                    saveRecipe(recipe)
                 }
                 println("Recipe saved!")
             } else {
-                if(rpv.recipe != nil) {
-                    skipRecipe(rpv.recipe!)
+                if let recipe = rpv.recipe {
+                    skipRecipe(recipe)
                 }
                 println("Recipe skipped!")
             }

@@ -68,7 +68,11 @@ class RecipePickerView : MDCSwipeToChooseView {
         //        )
 
         let nameLabel: UILabel = UILabel(frame: infoView.bounds)
-        nameLabel.text = "\(recipe!.name)"
+        if let recipe = self.recipe {
+            nameLabel.text = recipe.name
+        } else {
+            nameLabel.text = ""
+        }
         nameLabel.textAlignment = NSTextAlignment.Center
         //nameLabel.textRectForBounds(nameLabel.bounds, limitedToNumberOfLines: 1)
         nameLabel.font = UIFont.systemFontOfSize(20.0)

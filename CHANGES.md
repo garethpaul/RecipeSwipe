@@ -2,6 +2,8 @@
 
 ## 2026-06-09
 
+- Replaced forced recipe optional unwraps with guarded bindings and added
+  static validation to keep recipe UI paths crash-safe.
 - Replaced forced sample recipe image unwraps with a checked fallback and added
   static validation to keep Swift image loads guarded.
 - Guarded the swipe delegate against non-recipe views and added static
