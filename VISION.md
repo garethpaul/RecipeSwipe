@@ -24,6 +24,7 @@ Priority:
 - Avoid adding network recipe fetching before data boundaries are documented
 - Keep network recipe-data markers out of Swift source until a contract exists
 - Keep empty placeholder card behavior safe when recipe data runs out
+- Keep empty-state background artwork aligned to the card frame
 - Keep completed maintenance plans under `docs/plans`
 
 Next priorities:

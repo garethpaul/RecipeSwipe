@@ -191,7 +191,7 @@ class RecipePickerViewController: UIViewController, MDCSwipeToChooseDelegate {
             CGRectGetMinX(bottomCardView.frame),
             CGRectGetMinY(bottomCardView.frame),
             CGRectGetWidth(bottomCardView.frame),
-            CGRectGetWidth(bottomCardView.frame)
+            CGRectGetHeight(bottomCardView.frame)
         )
 
         let noMoreLabel: UILabel = UILabel(frame: CGRectMake(

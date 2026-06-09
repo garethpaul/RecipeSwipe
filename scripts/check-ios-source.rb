@@ -174,6 +174,19 @@ if picker_controller.file?
          picker_source.include?('recipeView.mdc_swipe(direction)')
     failures << 'RecipePickerViewController swipeTopCard must guard empty placeholder cards'
   end
+
+  background_section = swift_method_source(picker_source, 'func constructBackground()')
+  if background_section.nil?
+    failures << 'RecipePickerViewController.constructBackground could not be validated'
+  else
+    unless background_section.include?('CGRectGetHeight(bottomCardView.frame)')
+      failures << 'RecipePickerViewController background image height must follow bottomCardView height'
+    end
+
+    if background_section.match?(/CGRectGetWidth\(bottomCardView\.frame\)\s*\)/)
+      failures << 'RecipePickerViewController background image must not use bottomCardView width as height'
+    end
+  end
 else
   failures << 'RecipeSwipe/RecipePickerViewController.swift is missing'
 end

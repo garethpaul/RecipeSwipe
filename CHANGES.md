@@ -1,5 +1,10 @@
 # Changes
 
+## 2026-06-09
+
+- Fixed the empty-state background image height to follow the bottom card frame
+  height and added static validation for that layout guard.
+
 ## 2026-06-08
 
 - Added a static local-data guard so Swift source cannot introduce network

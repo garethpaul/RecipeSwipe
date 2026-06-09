@@ -61,7 +61,8 @@ The setup commands above are derived from repository files. Legacy mobile, Pytho
 - The static validator also requires a completed canonical plan under
   `docs/plans` and checks that empty placeholder cards are not swiped by the
   like/skip buttons. It also guards against adding network recipe-data markers
-  before a data contract exists.
+  before a data contract exists and keeps the empty-state background sized to
+  the card frame.
 
 When the required SDK or runtime is unavailable, use static checks and source review first, then verify on a machine that has the matching platform toolchain.
 
@@ -85,6 +86,8 @@ When the required SDK or runtime is unavailable, use static checks and source re
   card swipe guard baseline.
 - See `docs/plans/2026-06-08-local-recipe-data-guard.md` for the local data
   boundary baseline.
+- See `docs/plans/2026-06-09-empty-state-background-sizing.md` for the
+  empty-state background sizing guard.
 
 ## Contributing
 
