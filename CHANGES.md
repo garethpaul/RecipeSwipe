@@ -2,6 +2,8 @@
 
 ## 2026-06-09
 
+- Added accessibility labels and static validation for the image-only like/nope
+  controls.
 - Moved like/nope controls above the empty-state background layer and added
   static validation to prevent those buttons from being inserted behind artwork.
 - Guarded swipe animation superview access and added static validation to keep

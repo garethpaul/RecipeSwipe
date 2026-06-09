@@ -137,6 +137,7 @@ class RecipePickerViewController: UIViewController, MDCSwipeToChooseDelegate {
         button.frame = frame
 
         button.setImage(UIImage(named: "nope"), forState: UIControlState.Normal)
+        button.accessibilityLabel = "Skip recipe"
 
         button.tintColor = UIColor(
             red: 247.0/255.0,
@@ -162,6 +163,7 @@ class RecipePickerViewController: UIViewController, MDCSwipeToChooseDelegate {
         button.frame = frame
 
         button.setImage(UIImage(named: "liked"), forState: UIControlState.Normal)
+        button.accessibilityLabel = "Save recipe"
 
         button.tintColor = UIColor.blueColor()
 

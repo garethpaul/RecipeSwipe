@@ -214,9 +214,9 @@ if picker_controller.file?
   end
 
   {
-    'constructNopeButton()' => 'nope',
-    'constructLikeButton()' => 'like'
-  }.each do |signature, button_name|
+    'constructNopeButton()' => ['nope', 'Skip recipe'],
+    'constructLikeButton()' => ['like', 'Save recipe']
+  }.each do |signature, (button_name, accessibility_label)|
     button_section = swift_method_source(picker_source, "func #{signature}")
     if button_section.nil?
       failures << "RecipePickerViewController.#{signature} could not be validated"
@@ -229,6 +229,10 @@ if picker_controller.file?
 
     unless button_section.include?('self.view.addSubview(button)')
       failures << "RecipePickerViewController #{button_name} button must be added above background artwork"
+    end
+
+    unless button_section.include?("button.accessibilityLabel = \"#{accessibility_label}\"")
+      failures << "RecipePickerViewController #{button_name} button must expose accessibility label #{accessibility_label.inspect}"
     end
   end
 else

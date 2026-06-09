@@ -64,7 +64,8 @@ The setup commands above are derived from repository files. Legacy mobile, Pytho
   before a data contract exists, keeps the empty-state background sized to the
   card frame, keeps swipe buttons above background artwork, rejects force-casts
   in the swipe delegate, and rejects forced `UIImage(named:)`, `Recipe`, and
-  `superview` optional unwraps in Swift source.
+  `superview` optional unwraps in Swift source. It also keeps the image-only
+  like/nope buttons labelled for accessibility.
 
 When the required SDK or runtime is unavailable, use static checks and source review first, then verify on a machine that has the matching platform toolchain.
 
@@ -100,6 +101,8 @@ When the required SDK or runtime is unavailable, use static checks and source re
   superview guard.
 - See `docs/plans/2026-06-09-swipe-button-layering.md` for the swipe button
   layering guard.
+- See `docs/plans/2026-06-09-swipe-button-accessibility-labels.md` for the
+  image-only swipe button accessibility label guard.
 
 ## Contributing
 
