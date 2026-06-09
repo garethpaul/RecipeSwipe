@@ -62,7 +62,8 @@ The setup commands above are derived from repository files. Legacy mobile, Pytho
   `docs/plans` and checks that empty placeholder cards are not swiped by the
   like/skip buttons. It also guards against adding network recipe-data markers
   before a data contract exists, keeps the empty-state background sized to the
-  card frame, and rejects force-casts in the swipe delegate.
+  card frame, rejects force-casts in the swipe delegate, and rejects forced
+  `UIImage(named:)` unwraps in Swift source.
 
 When the required SDK or runtime is unavailable, use static checks and source review first, then verify on a machine that has the matching platform toolchain.
 
@@ -90,6 +91,8 @@ When the required SDK or runtime is unavailable, use static checks and source re
   empty-state background sizing guard.
 - See `docs/plans/2026-06-09-swipe-delegate-type-guard.md` for the swipe
   delegate type guard.
+- See `docs/plans/2026-06-09-recipe-image-fallback.md` for the sample recipe
+  image fallback guard.
 
 ## Contributing
 

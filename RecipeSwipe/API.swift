@@ -11,13 +11,22 @@ import UIKit
 
 class APIClient {
 
+    class func sampleRecipeImage() -> UIImage {
+        if let image = UIImage(named: "photo") {
+            return image
+        }
+
+        return UIImage()
+    }
+
     class func fetchRecpes(recipeHandler: (Array<Recipe>) -> ()) -> Void {
+        let sampleImage = self.sampleRecipeImage()
         var recipes: Array<Recipe> = [
             Recipe(name: "Pasta",
-                image: UIImage(named: "photo")!
+                image: sampleImage
             ),
             Recipe(name: "Pasta #2",
-                image: UIImage(named: "photo")!
+                image: sampleImage
             )]
         recipeHandler(recipes)
     }

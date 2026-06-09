@@ -91,6 +91,10 @@ asset_names = Set.new(
 
 swift_files.each do |path|
   source = File.read(path)
+  if source.match?(/UIImage\s*\(\s*named:\s*"[^"]+"\s*\)\s*!/)
+    failures << "#{rel(path)} force-unwraps UIImage(named:); use a checked fallback before creating recipe cards"
+  end
+
   source.scan(/UIImage\s*\(\s*named:\s*"([^"]+)"/).flatten.each do |image_name|
     next if asset_names.include?(image_name)
 

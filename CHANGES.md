@@ -2,6 +2,8 @@
 
 ## 2026-06-09
 
+- Replaced forced sample recipe image unwraps with a checked fallback and added
+  static validation to keep Swift image loads guarded.
 - Guarded the swipe delegate against non-recipe views and added static
   validation so delegate callbacks cannot force-cast placeholder views.
 - Fixed the empty-state background image height to follow the bottom card frame
