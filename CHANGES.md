@@ -2,6 +2,8 @@
 
 ## 2026-06-09
 
+- Guarded swipe animation superview access and added static validation to keep
+  Swift source free of `superview!` force unwraps.
 - Replaced forced recipe optional unwraps with guarded bindings and added
   static validation to keep recipe UI paths crash-safe.
 - Replaced forced sample recipe image unwraps with a checked fallback and added

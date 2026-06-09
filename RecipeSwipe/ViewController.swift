@@ -54,7 +54,9 @@ class ViewController: UIViewController, MDCSwipeToChooseDelegate {
             // Snap the view back and cancel the choice.
             UIView.animateWithDuration(0.16, animations: { () -> Void in
                 view.transform = CGAffineTransformIdentity
-                view.center = view.superview!.center
+                if let superview = view.superview {
+                    view.center = superview.center
+                }
             })
             return false;
         }

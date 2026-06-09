@@ -63,7 +63,7 @@ The setup commands above are derived from repository files. Legacy mobile, Pytho
   like/skip buttons. It also guards against adding network recipe-data markers
   before a data contract exists, keeps the empty-state background sized to the
   card frame, rejects force-casts in the swipe delegate, and rejects forced
-  `UIImage(named:)` and `Recipe` optional unwraps in Swift source.
+  `UIImage(named:)`, `Recipe`, and `superview` optional unwraps in Swift source.
 
 When the required SDK or runtime is unavailable, use static checks and source review first, then verify on a machine that has the matching platform toolchain.
 
@@ -95,6 +95,8 @@ When the required SDK or runtime is unavailable, use static checks and source re
   image fallback guard.
 - See `docs/plans/2026-06-09-recipe-optional-unwrapping.md` for the recipe
   optional unwrapping guard.
+- See `docs/plans/2026-06-09-superview-unwrap-guard.md` for the swipe animation
+  superview guard.
 
 ## Contributing
 

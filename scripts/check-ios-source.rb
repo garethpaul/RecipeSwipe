@@ -99,6 +99,10 @@ swift_files.each do |path|
     failures << "#{rel(path)} force-unwraps a Recipe optional; unwrap recipe with if let before using it"
   end
 
+  if source.include?('superview!')
+    failures << "#{rel(path)} force-unwraps a superview; guard optional parent views before animating"
+  end
+
   source.scan(/UIImage\s*\(\s*named:\s*"([^"]+)"/).flatten.each do |image_name|
     next if asset_names.include?(image_name)
 
