@@ -62,8 +62,9 @@ The setup commands above are derived from repository files. Legacy mobile, Pytho
   `docs/plans` and checks that empty placeholder cards are not swiped by the
   like/skip buttons. It also guards against adding network recipe-data markers
   before a data contract exists, keeps the empty-state background sized to the
-  card frame, rejects force-casts in the swipe delegate, and rejects forced
-  `UIImage(named:)`, `Recipe`, and `superview` optional unwraps in Swift source.
+  card frame, keeps swipe buttons above background artwork, rejects force-casts
+  in the swipe delegate, and rejects forced `UIImage(named:)`, `Recipe`, and
+  `superview` optional unwraps in Swift source.
 
 When the required SDK or runtime is unavailable, use static checks and source review first, then verify on a machine that has the matching platform toolchain.
 
@@ -97,6 +98,8 @@ When the required SDK or runtime is unavailable, use static checks and source re
   optional unwrapping guard.
 - See `docs/plans/2026-06-09-superview-unwrap-guard.md` for the swipe animation
   superview guard.
+- See `docs/plans/2026-06-09-swipe-button-layering.md` for the swipe button
+  layering guard.
 
 ## Contributing
 

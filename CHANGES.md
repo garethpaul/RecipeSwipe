@@ -2,6 +2,8 @@
 
 ## 2026-06-09
 
+- Moved like/nope controls above the empty-state background layer and added
+  static validation to prevent those buttons from being inserted behind artwork.
 - Guarded swipe animation superview access and added static validation to keep
   Swift source free of `superview!` force unwraps.
 - Replaced forced recipe optional unwraps with guarded bindings and added

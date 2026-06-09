@@ -212,6 +212,25 @@ if picker_controller.file?
       failures << 'RecipePickerViewController background image must not use bottomCardView width as height'
     end
   end
+
+  {
+    'constructNopeButton()' => 'nope',
+    'constructLikeButton()' => 'like'
+  }.each do |signature, button_name|
+    button_section = swift_method_source(picker_source, "func #{signature}")
+    if button_section.nil?
+      failures << "RecipePickerViewController.#{signature} could not be validated"
+      next
+    end
+
+    if button_section.include?('insertSubview(button, atIndex: 0)')
+      failures << "RecipePickerViewController #{button_name} button must not be inserted behind the empty-state background"
+    end
+
+    unless button_section.include?('self.view.addSubview(button)')
+      failures << "RecipePickerViewController #{button_name} button must be added above background artwork"
+    end
+  end
 else
   failures << 'RecipeSwipe/RecipePickerViewController.swift is missing'
 end

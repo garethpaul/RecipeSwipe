@@ -147,7 +147,7 @@ class RecipePickerViewController: UIViewController, MDCSwipeToChooseDelegate {
 
         button.addTarget(self, action: "nopeTopCardView", forControlEvents: UIControlEvents.TouchUpInside)
 
-        self.view.insertSubview(button, atIndex: 0)
+        self.view.addSubview(button)
     }
 
     func constructLikeButton() {
@@ -167,7 +167,7 @@ class RecipePickerViewController: UIViewController, MDCSwipeToChooseDelegate {
 
         button.addTarget(self, action: "likeTopCardView", forControlEvents: UIControlEvents.TouchUpInside)
 
-        self.view.insertSubview(button, atIndex: 0)
+        self.view.addSubview(button)
     }
 
     func swipeTopCard(direction: MDCSwipeDirection) -> Void {
