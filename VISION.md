@@ -25,6 +25,7 @@ Priority:
 - Keep network recipe-data markers out of Swift source until a contract exists
 - Keep empty placeholder card behavior safe when recipe data runs out
 - Keep empty-state background artwork aligned to the card frame
+- Keep swipe delegate callbacks guarded before advancing the card stack
 - Keep completed maintenance plans under `docs/plans`
 
 Next priorities:

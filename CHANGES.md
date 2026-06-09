@@ -2,6 +2,8 @@
 
 ## 2026-06-09
 
+- Guarded the swipe delegate against non-recipe views and added static
+  validation so delegate callbacks cannot force-cast placeholder views.
 - Fixed the empty-state background image height to follow the bottom card frame
   height and added static validation for that layout guard.
 

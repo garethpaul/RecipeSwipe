@@ -175,6 +175,19 @@ if picker_controller.file?
     failures << 'RecipePickerViewController swipeTopCard must guard empty placeholder cards'
   end
 
+  delegate_section = swift_method_source(picker_source, 'func view(view: UIView!, wasChosenWithDirection direction: MDCSwipeDirection)')
+  if delegate_section.nil?
+    failures << 'RecipePickerViewController swipe delegate could not be validated'
+  else
+    if delegate_section.match?(/\blet\s+\w+\s*=\s*view\s+as\s+RecipePickerView\b/)
+      failures << 'RecipePickerViewController swipe delegate must not force-cast the chosen view'
+    end
+
+    unless delegate_section.include?('if let rpv = view as? RecipePickerView')
+      failures << 'RecipePickerViewController swipe delegate must guard the chosen view type'
+    end
+  end
+
   background_section = swift_method_source(picker_source, 'func constructBackground()')
   if background_section.nil?
     failures << 'RecipePickerViewController.constructBackground could not be validated'

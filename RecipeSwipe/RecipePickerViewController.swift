@@ -60,39 +60,40 @@ class RecipePickerViewController: UIViewController, MDCSwipeToChooseDelegate {
     }
 
     func view(view: UIView!, wasChosenWithDirection direction: MDCSwipeDirection) {
-        let rpv = view as RecipePickerView
-        if (direction == MDCSwipeDirection.Right) {
-            if(rpv.recipe != nil) {
-                saveRecipe(rpv.recipe!)
+        if let rpv = view as? RecipePickerView {
+            if (direction == MDCSwipeDirection.Right) {
+                if(rpv.recipe != nil) {
+                    saveRecipe(rpv.recipe!)
+                }
+                println("Recipe saved!")
+            } else {
+                if(rpv.recipe != nil) {
+                    skipRecipe(rpv.recipe!)
+                }
+                println("Recipe skipped!")
             }
-            println("Recipe saved!")
-        } else {
-            if(rpv.recipe != nil) {
-                skipRecipe(rpv.recipe!)
+
+            topCardView = bottomCardView
+
+            if(self.recipes.count > 0) {
+                // Create a new bottom card view
+                bottomCardView = createRecipeView(bottomCardViewFrame(), recipe: self.recipes.removeAtIndex(0))
+
+                bottomCardView.alpha = 0.0
+                self.view.insertSubview(bottomCardView, belowSubview: topCardView)
+
+                UIView.animateWithDuration(
+                    0.5,
+                    delay: 0.0,
+                    options: UIViewAnimationOptions.CurveEaseInOut,
+                    animations: {
+                        self.bottomCardView.alpha = 1
+                    },
+                    completion: nil
+                )
+            } else {
+                bottomCardView = UIView(frame: bottomCardViewFrame())
             }
-            println("Recipe skipped!")
-        }
-
-        topCardView = bottomCardView
-
-        if(self.recipes.count > 0) {
-            // Create a new bottom card view
-            bottomCardView = createRecipeView(bottomCardViewFrame(), recipe: self.recipes.removeAtIndex(0))
-
-            bottomCardView.alpha = 0.0
-            self.view.insertSubview(bottomCardView, belowSubview: topCardView)
-
-            UIView.animateWithDuration(
-                0.5,
-                delay: 0.0,
-                options: UIViewAnimationOptions.CurveEaseInOut,
-                animations: {
-                    self.bottomCardView.alpha = 1
-                },
-                completion: nil
-            )
-        } else {
-            bottomCardView = UIView(frame: bottomCardViewFrame())
         }
     }
 
