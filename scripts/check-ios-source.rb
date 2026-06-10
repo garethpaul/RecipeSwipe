@@ -222,6 +222,13 @@ if picker_controller.file?
     failures << 'RecipePickerViewController must define guarded swipeTopCard(direction:)'
   end
 
+  unless picker_source.include?('func updateSwipeButtonsEnabled()') &&
+         picker_source.include?('self.topCardView is RecipePickerView') &&
+         picker_source.include?('self.nopeButton?.enabled = hasRecipeCard') &&
+         picker_source.include?('self.likeButton?.enabled = hasRecipeCard')
+    failures << 'RecipePickerViewController must disable swipe buttons when no recipe card is active'
+  end
+
   if picker_source.include?('self.topCardView.mdc_swipe')
     failures << 'RecipePickerViewController button actions must not swipe topCardView without a RecipePickerView guard'
   end
@@ -277,6 +284,10 @@ if picker_controller.file?
 
     unless button_section.include?("button.accessibilityLabel = \"#{accessibility_label}\"")
       failures << "RecipePickerViewController #{button_name} button must expose accessibility label #{accessibility_label.inspect}"
+    end
+    unless button_section.include?("self.#{button_name}Button = button") &&
+           button_section.include?('self.updateSwipeButtonsEnabled()')
+      failures << "RecipePickerViewController #{button_name} button must synchronize its enabled state"
     end
   end
 else

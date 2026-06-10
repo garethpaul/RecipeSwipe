@@ -18,6 +18,8 @@ class RecipePickerViewController: UIViewController, MDCSwipeToChooseDelegate {
     var topCardView: UIView = UIView()
     var bottomCardView: UIView = UIView()
     var savedRecipes: Array<Recipe> = Array()
+    var nopeButton: UIButton?
+    var likeButton: UIButton?
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -74,6 +76,7 @@ class RecipePickerViewController: UIViewController, MDCSwipeToChooseDelegate {
             }
 
             topCardView = bottomCardView
+            self.updateSwipeButtonsEnabled()
 
             if(self.recipes.count > 0) {
                 // Create a new bottom card view
@@ -126,6 +129,12 @@ class RecipePickerViewController: UIViewController, MDCSwipeToChooseDelegate {
             ((CGRectGetHeight(self.view.bounds) - CGRectGetMaxY(self.bottomCardView.frame) - buttonDiameter) / 2)
     }
 
+    func updateSwipeButtonsEnabled() {
+        let hasRecipeCard = self.topCardView is RecipePickerView
+        self.nopeButton?.enabled = hasRecipeCard
+        self.likeButton?.enabled = hasRecipeCard
+    }
+
     func constructNopeButton() {
         let frame: CGRect = CGRectMake(
             buttonHPadding,
@@ -148,6 +157,8 @@ class RecipePickerViewController: UIViewController, MDCSwipeToChooseDelegate {
 
         button.addTarget(self, action: "nopeTopCardView", forControlEvents: UIControlEvents.TouchUpInside)
 
+        self.nopeButton = button
+        self.updateSwipeButtonsEnabled()
         self.view.addSubview(button)
     }
 
@@ -169,6 +180,8 @@ class RecipePickerViewController: UIViewController, MDCSwipeToChooseDelegate {
 
         button.addTarget(self, action: "likeTopCardView", forControlEvents: UIControlEvents.TouchUpInside)
 
+        self.likeButton = button
+        self.updateSwipeButtonsEnabled()
         self.view.addSubview(button)
     }
 
