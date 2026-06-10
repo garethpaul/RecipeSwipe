@@ -31,6 +31,7 @@ Priority:
 - Keep sample recipe image loading guarded against missing assets
 - Keep optional recipe values guarded before saving, skipping, or displaying
 - Keep swipe animation parent-view access guarded before reading `superview`
+- Keep Xcode user-state files out of tracked source
 - Keep completed maintenance plans under `docs/plans`
 
 Next priorities:

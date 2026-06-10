@@ -36,6 +36,21 @@ end
 
 failures = []
 
+tracked_files = IO.popen(['git', '-C', ROOT.to_s, 'ls-files'], &:read).split("\n")
+xcode_user_state_files = tracked_files.select do |file|
+  basename = File.basename(file)
+  file.include?('/xcuserdata/') ||
+    file.end_with?('.xcuserstate', '.xccheckout', '.moved-aside', '.hmap', '.ipa') ||
+    (file.end_with?('.pbxuser') && basename != 'default.pbxuser') ||
+    (file.end_with?('.mode1v3') && basename != 'default.mode1v3') ||
+    (file.end_with?('.mode2v3') && basename != 'default.mode2v3') ||
+    (file.end_with?('.perspectivev3') && basename != 'default.perspectivev3')
+end
+
+unless xcode_user_state_files.empty?
+  failures << "Xcode user state files must not be tracked: #{xcode_user_state_files.join(', ')}"
+end
+
 if DOCS_PLANS.empty?
   failures << 'docs/plans must contain at least one completed plan'
 end

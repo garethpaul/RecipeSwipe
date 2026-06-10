@@ -1,5 +1,9 @@
 # Changes
 
+## 2026-06-10
+
+- Added static validation to reject tracked Xcode user-state files.
+
 ## 2026-06-09
 
 - Added accessibility labels and static validation for the image-only like/nope
