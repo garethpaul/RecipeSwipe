@@ -32,6 +32,10 @@ Priority:
 - Keep optional recipe values guarded before saving, skipping, or displaying
 - Keep swipe animation parent-view access guarded before reading `superview`
 - Keep Xcode user-state files out of tracked source
+- Run the dependency-free structural gate on a fixed macOS runner with
+  read-only permissions and pinned actions
+- Keep hosted validation separate from unsupported modern Xcode builds and
+  archived CocoaPods installation
 - Keep completed maintenance plans under `docs/plans`
 
 Next priorities:

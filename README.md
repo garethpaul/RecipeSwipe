@@ -18,6 +18,7 @@ This README is based on the checked-in source, manifests, scripts, and repositor
 - `RecipeSwipeTests` - source or example code
 - `CHANGES.md` - notable maintenance changes
 - `Makefile` - local verification entry points
+- `.github/workflows/check.yml` - hosted macOS structural validation
 - `docs/plans` - canonical completed maintenance plans
 - `plans` - completed maintenance plans
 - `scripts` - deterministic static iOS validation checks
@@ -67,6 +68,10 @@ The setup commands above are derived from repository files. Legacy mobile, Pytho
   `superview` optional unwraps in Swift source. It also keeps the image-only
   like/nope buttons labelled for accessibility and rejects tracked Xcode
   user-state files.
+- GitHub Actions runs the dependency-free structural gate on macOS 15 with
+  read-only permissions and pinned checkout code. It intentionally does not
+  install CocoaPods 0.35 dependencies or build this archived Swift/iOS 8.2
+  project with a modern Xcode toolchain.
 
 When the required SDK or runtime is unavailable, use static checks and source review first, then verify on a machine that has the matching platform toolchain.
 
@@ -106,6 +111,8 @@ When the required SDK or runtime is unavailable, use static checks and source re
   image-only swipe button accessibility label guard.
 - See `docs/plans/2026-06-10-xcode-user-state-guard.md` for the tracked Xcode
   user-state file guard.
+- See `docs/plans/2026-06-10-hosted-structural-validation.md` for the pinned
+  macOS structural gate and legacy build boundary.
 
 ## Contributing
 
