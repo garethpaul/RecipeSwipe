@@ -5,6 +5,7 @@ require 'json'
 require 'open3'
 require 'pathname'
 require 'set'
+require_relative 'asset-contract'
 require_relative 'workflow-contract'
 
 ROOT = Pathname.new(__dir__).parent.expand_path
@@ -157,8 +158,9 @@ Dir.glob(asset_root.join('**/Contents.json')).sort.each do |json_path|
     filename = image['filename']
     next if filename.nil? || filename.empty?
 
-    file_path = Pathname.new(json_path).dirname.join(filename)
-    failures << "#{rel(json_path)} points at missing image file #{filename}" unless file_path.file?
+    AssetContract.validate_reference(Pathname.new(json_path).dirname, filename).each do |failure|
+      failures << "#{rel(json_path)} #{failure}"
+    end
   end
 rescue JSON::ParserError => e
   failures << "#{rel(json_path)} is not valid JSON: #{e.message}"

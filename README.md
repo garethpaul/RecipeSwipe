@@ -74,7 +74,7 @@ The setup commands above are derived from repository files. Legacy mobile, Pytho
   like/nope buttons labelled for accessibility, disables them when no recipe
   card is active, and rejects tracked Xcode user-state files.
 - `make structural` runs the static source validator plus dependency-free
-  workflow contract mutation tests.
+  workflow contract mutation tests and asset catalog file-integrity tests.
 - GitHub Actions runs that structural gate on macOS 15 with credential-free
   checkout, read-only permissions, pinned checkout code, and manual dispatch.
   It intentionally does not install CocoaPods 0.35 dependencies or build this

@@ -1,5 +1,12 @@
 # Changes
 
+## 2026-06-12
+
+- Added dependency-free asset catalog path, size, extension, and PNG/JPEG
+  signature validation.
+- Added Minitest coverage and wired asset integrity into structural and full
+  Make gates.
+
 ## 2026-06-10
 
 - Added pinned, credential-free, read-only macOS structural validation without

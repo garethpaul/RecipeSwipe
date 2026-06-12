@@ -30,6 +30,7 @@ Priority:
 - Disable like/nope controls when no recipe card is active
 - Keep swipe delegate callbacks guarded before advancing the card stack
 - Keep sample recipe image loading guarded against missing assets
+- Keep asset catalog filenames contained and PNG/JPEG files signature-checked
 - Keep optional recipe values guarded before saving, skipping, or displaying
 - Keep swipe animation parent-view access guarded before reading `superview`
 - Keep Xcode user-state files out of tracked source
