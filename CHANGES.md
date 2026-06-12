@@ -2,7 +2,12 @@
 
 ## 2026-06-10
 
+- Added pinned, read-only macOS structural validation without installing
+  archived pods or invoking an unsupported modern Xcode build.
+- Made tracked-file inspection fail closed when Git cannot inspect the checkout.
 - Added static validation to reject tracked Xcode user-state files.
+- Disabled like/nope controls when no recipe card is active so the empty state
+  no longer exposes ineffective actions.
 
 ## 2026-06-09
 

@@ -2,11 +2,14 @@
 # frozen_string_literal: true
 
 require 'json'
+require 'open3'
 require 'pathname'
 require 'set'
 
 ROOT = Pathname.new(__dir__).parent.expand_path
 CANONICAL_PLAN = ROOT.join('docs/plans/2026-06-08-recipeswipe-baseline.md')
+HOSTED_PLAN = ROOT.join('docs/plans/2026-06-10-hosted-structural-validation.md')
+WORKFLOW = ROOT.join('.github/workflows/check.yml')
 DOCS_PLANS = Dir.glob(ROOT.join('docs/plans/*.md')).sort
 
 def rel(path)
@@ -36,7 +39,11 @@ end
 
 failures = []
 
-tracked_files = IO.popen(['git', '-C', ROOT.to_s, 'ls-files'], &:read).split("\n")
+tracked_output, tracked_error, tracked_status = Open3.capture3('git', '-C', ROOT.to_s, 'ls-files')
+unless tracked_status.success?
+  failures << "Unable to inspect tracked files: #{tracked_error.strip}"
+end
+tracked_files = tracked_status.success? ? tracked_output.split("\n") : []
 xcode_user_state_files = tracked_files.select do |file|
   basename = File.basename(file)
   file.include?('/xcuserdata/') ||
@@ -66,6 +73,28 @@ if CANONICAL_PLAN.file?
   # The baseline plan stays canonical for the historical validator coverage.
 else
   failures << "#{rel(CANONICAL_PLAN)} is missing"
+end
+
+unless HOSTED_PLAN.file?
+  failures << "#{rel(HOSTED_PLAN)} is missing"
+end
+
+if WORKFLOW.file?
+  workflow = WORKFLOW.read
+  {
+    'runs-on: macos-15' => 'use the fixed macOS 15 runner',
+    "permissions:\n  contents: read" => 'use read-only repository contents permission',
+    'actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10' => 'pin the reviewed actions/checkout v6.0.3 commit',
+    'run: make lint' => 'run the canonical structural validation gate'
+  }.each do |fragment, requirement|
+    failures << "#{rel(WORKFLOW)} must #{requirement}" unless workflow.include?(fragment)
+  end
+
+  failures << "#{rel(WORKFLOW)} must not allow structural validation failures" if workflow.include?('continue-on-error')
+  failures << "#{rel(WORKFLOW)} must not run legacy Xcode builds" if workflow.include?('xcodebuild')
+  failures << "#{rel(WORKFLOW)} must not install archived CocoaPods dependencies" if workflow.include?('pod install')
+else
+  failures << "#{rel(WORKFLOW)} is missing"
 end
 
 swift_files = Dir.glob(ROOT.join('{RecipeSwipe,RecipeSwipeTests}/**/*.swift')).sort
@@ -193,6 +222,13 @@ if picker_controller.file?
     failures << 'RecipePickerViewController must define guarded swipeTopCard(direction:)'
   end
 
+  unless picker_source.include?('func updateSwipeButtonsEnabled()') &&
+         picker_source.include?('self.topCardView is RecipePickerView') &&
+         picker_source.include?('self.nopeButton?.enabled = hasRecipeCard') &&
+         picker_source.include?('self.likeButton?.enabled = hasRecipeCard')
+    failures << 'RecipePickerViewController must disable swipe buttons when no recipe card is active'
+  end
+
   if picker_source.include?('self.topCardView.mdc_swipe')
     failures << 'RecipePickerViewController button actions must not swipe topCardView without a RecipePickerView guard'
   end
@@ -248,6 +284,10 @@ if picker_controller.file?
 
     unless button_section.include?("button.accessibilityLabel = \"#{accessibility_label}\"")
       failures << "RecipePickerViewController #{button_name} button must expose accessibility label #{accessibility_label.inspect}"
+    end
+    unless button_section.include?("self.#{button_name}Button = button") &&
+           button_section.include?('self.updateSwipeButtonsEnabled()')
+      failures << "RecipePickerViewController #{button_name} button must synchronize its enabled state"
     end
   end
 else

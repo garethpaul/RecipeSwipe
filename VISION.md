@@ -27,11 +27,16 @@ Priority:
 - Keep empty-state background artwork aligned to the card frame
 - Keep like/nope controls above the empty-state background artwork
 - Keep image-only like/nope controls labelled for accessibility
+- Disable like/nope controls when no recipe card is active
 - Keep swipe delegate callbacks guarded before advancing the card stack
 - Keep sample recipe image loading guarded against missing assets
 - Keep optional recipe values guarded before saving, skipping, or displaying
 - Keep swipe animation parent-view access guarded before reading `superview`
 - Keep Xcode user-state files out of tracked source
+- Run the dependency-free structural gate on a fixed macOS runner with
+  read-only permissions and pinned actions
+- Keep hosted validation separate from unsupported modern Xcode builds and
+  archived CocoaPods installation
 - Keep completed maintenance plans under `docs/plans`
 
 Next priorities:
