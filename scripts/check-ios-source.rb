@@ -258,6 +258,20 @@ if picker_controller.file?
     end
   end
 
+  create_recipe_view_section = swift_method_source(picker_source, 'func createRecipeView(frame: CGRect, recipe: Recipe)')
+  if create_recipe_view_section.nil?
+    failures << 'RecipePickerViewController.createRecipeView could not be validated'
+  else
+    unless create_recipe_view_section.include?('if let panState = state') &&
+           create_recipe_view_section.include?('panState.thresholdRatio')
+      failures << 'RecipePickerViewController onPan callback must guard the optional pan state before reading it'
+    end
+
+    if create_recipe_view_section.include?('state.thresholdRatio')
+      failures << 'RecipePickerViewController onPan callback must not dereference the nullable state directly'
+    end
+  end
+
   {
     'constructNopeButton()' => ['nope', 'Skip recipe'],
     'constructLikeButton()' => ['like', 'Save recipe']

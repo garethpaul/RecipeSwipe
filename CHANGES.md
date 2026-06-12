@@ -2,6 +2,8 @@
 
 ## 2026-06-12
 
+- Guarded the swipe pan callback before reading its implicitly unwrapped state
+  and added structural validation for the optional binding.
 - Added dependency-free asset catalog path, size, extension, and PNG/JPEG
   signature validation.
 - Added Minitest coverage and wired asset integrity into structural and full

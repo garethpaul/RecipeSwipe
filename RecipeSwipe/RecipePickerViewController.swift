@@ -233,13 +233,15 @@ class RecipePickerViewController: UIViewController, MDCSwipeToChooseDelegate {
         options.nopeText = "Delete"
 
         options.onPan = {(state: MDCPanState!) -> Void in
-            let frame: CGRect = self.bottomCardViewFrame()
-            self.bottomCardView.frame = CGRectMake(
-                frame.origin.x,
-                frame.origin.y - (state.thresholdRatio * 10.0),
-                CGRectGetWidth(frame),
-                CGRectGetHeight(frame)
-            )
+            if let panState = state {
+                let frame: CGRect = self.bottomCardViewFrame()
+                self.bottomCardView.frame = CGRectMake(
+                    frame.origin.x,
+                    frame.origin.y - (panState.thresholdRatio * 10.0),
+                    CGRectGetWidth(frame),
+                    CGRectGetHeight(frame)
+                )
+            }
         };
 
         var rpw: RecipePickerView = RecipePickerView(frame: frame, recipe: recipe, options: options)
