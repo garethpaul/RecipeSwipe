@@ -54,6 +54,10 @@
 - See `VISION.md` for project direction and contribution guardrails.
 - See `docs/plans/2026-06-08-recipeswipe-baseline.md` for the canonical static validation and deferred-card-loading baseline.
 - See `docs/plans/2026-06-08-empty-card-swipe-guard.md` for the placeholder card swipe guard baseline.
+- Hosted structural checks must keep checkout credentials disabled, permissions
+  read-only, actions pinned, and archived CocoaPods/Xcode execution excluded.
+- Run `make structural` after workflow or validator changes; its mutation tests
+  must reject duplicate, relocated, or contradictory credential settings.
 - `Pods/` is vendored dependency code; do not hand-edit it unless intentionally updating dependencies.
 
 ## Agent workflow

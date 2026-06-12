@@ -5,6 +5,7 @@ require 'json'
 require 'open3'
 require 'pathname'
 require 'set'
+require_relative 'workflow-contract'
 
 ROOT = Pathname.new(__dir__).parent.expand_path
 CANONICAL_PLAN = ROOT.join('docs/plans/2026-06-08-recipeswipe-baseline.md')
@@ -81,18 +82,9 @@ end
 
 if WORKFLOW.file?
   workflow = WORKFLOW.read
-  {
-    'runs-on: macos-15' => 'use the fixed macOS 15 runner',
-    "permissions:\n  contents: read" => 'use read-only repository contents permission',
-    'actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10' => 'pin the reviewed actions/checkout v6.0.3 commit',
-    'run: make lint' => 'run the canonical structural validation gate'
-  }.each do |fragment, requirement|
-    failures << "#{rel(WORKFLOW)} must #{requirement}" unless workflow.include?(fragment)
+  WorkflowContract.validate(workflow).each do |requirement|
+    failures << "#{rel(WORKFLOW)} must #{requirement}"
   end
-
-  failures << "#{rel(WORKFLOW)} must not allow structural validation failures" if workflow.include?('continue-on-error')
-  failures << "#{rel(WORKFLOW)} must not run legacy Xcode builds" if workflow.include?('xcodebuild')
-  failures << "#{rel(WORKFLOW)} must not install archived CocoaPods dependencies" if workflow.include?('pod install')
 else
   failures << "#{rel(WORKFLOW)} is missing"
 end

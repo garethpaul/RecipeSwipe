@@ -1,9 +1,15 @@
-.PHONY: build check lint test verify
+.PHONY: build check contract-test lint structural test verify
 
 lint:
 	ruby scripts/check-ios-source.rb
 
+contract-test:
+	ruby scripts/test-workflow-contract.rb
+
+structural: lint contract-test
+
 test:
+	ruby scripts/test-workflow-contract.rb
 	@if command -v xcodebuild >/dev/null 2>&1; then \
 		xcodebuild test -workspace RecipeSwipe.xcworkspace -scheme RecipeSwipe -destination 'platform=iOS Simulator,name=iPhone 6' ; \
 	else \

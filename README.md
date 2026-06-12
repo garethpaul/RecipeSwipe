@@ -73,10 +73,12 @@ The setup commands above are derived from repository files. Legacy mobile, Pytho
   `superview` optional unwraps in Swift source. It also keeps the image-only
   like/nope buttons labelled for accessibility, disables them when no recipe
   card is active, and rejects tracked Xcode user-state files.
-- GitHub Actions runs the dependency-free structural gate on macOS 15 with
-  read-only permissions and pinned checkout code. It intentionally does not
-  install CocoaPods 0.35 dependencies or build this archived Swift/iOS 8.2
-  project with a modern Xcode toolchain.
+- `make structural` runs the static source validator plus dependency-free
+  workflow contract mutation tests.
+- GitHub Actions runs that structural gate on macOS 15 with credential-free
+  checkout, read-only permissions, pinned checkout code, and manual dispatch.
+  It intentionally does not install CocoaPods 0.35 dependencies or build this
+  archived Swift/iOS 8.2 project with a modern Xcode toolchain.
 
 When the required SDK or runtime is unavailable, use static checks and source review first, then verify on a machine that has the matching platform toolchain.
 

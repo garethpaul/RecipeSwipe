@@ -34,7 +34,8 @@ Priority:
 - Keep swipe animation parent-view access guarded before reading `superview`
 - Keep Xcode user-state files out of tracked source
 - Run the dependency-free structural gate on a fixed macOS runner with
-  read-only permissions and pinned actions
+  credential-free checkout, read-only permissions, and pinned actions
+- Keep workflow policy covered by dependency-free hostile mutation tests
 - Keep hosted validation separate from unsupported modern Xcode builds and
   archived CocoaPods installation
 - Keep completed maintenance plans under `docs/plans`

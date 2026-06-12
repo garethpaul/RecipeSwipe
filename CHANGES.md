@@ -2,8 +2,11 @@
 
 ## 2026-06-10
 
-- Added pinned, read-only macOS structural validation without installing
-  archived pods or invoking an unsupported modern Xcode build.
+- Added pinned, credential-free, read-only macOS structural validation without
+  installing archived pods or invoking an unsupported modern Xcode build.
+- Added dependency-free workflow contract mutation tests for trigger,
+  credential, action, permission, runner, timeout, dispatch, and legacy-build
+  drift.
 - Made tracked-file inspection fail closed when Git cannot inspect the checkout.
 - Added static validation to reject tracked Xcode user-state files.
 - Disabled like/nope controls when no recipe card is active so the empty state
