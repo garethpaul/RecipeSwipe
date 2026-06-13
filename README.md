@@ -70,9 +70,10 @@ The setup commands above are derived from repository files. Legacy mobile, Pytho
   before a data contract exists, keeps the empty-state background sized to the
   card frame, keeps swipe buttons above background artwork, rejects force-casts
   in the swipe delegate, and rejects forced `UIImage(named:)`, `Recipe`, and
-  `superview` optional unwraps in Swift source. The swipe pan callback also
-  guards its implicitly unwrapped state before reading animation progress. The
-  validator keeps the image-only like/nope buttons labelled for accessibility,
+  `superview` optional unwraps in Swift source. Every tracked swipe pan callback
+  must also guard its implicitly unwrapped state before reading pan properties;
+  focused mutation tests enforce both callback syntaxes. The validator keeps
+  the image-only like/nope buttons labelled for accessibility,
   disables them when no recipe card is active, and rejects tracked Xcode
   user-state files.
 - `make structural` runs the static source validator plus dependency-free
@@ -126,6 +127,8 @@ When the required SDK or runtime is unavailable, use static checks and source re
   macOS structural gate and legacy build boundary.
 - See `docs/plans/2026-06-12-swipe-pan-state-guard.md` for the nullable pan
   callback guard.
+- See `docs/plans/2026-06-13-all-pan-state-guards.md` for repository-wide pan
+  callback enforcement and hostile mutation coverage.
 
 ## Contributing
 

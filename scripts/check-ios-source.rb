@@ -6,6 +6,7 @@ require 'open3'
 require 'pathname'
 require 'set'
 require_relative 'asset-contract'
+require_relative 'pan-state-contract'
 require_relative 'workflow-contract'
 
 ROOT = Pathname.new(__dir__).parent.expand_path
@@ -119,6 +120,12 @@ swift_files.each do |path|
   next if used_markers.empty?
 
   failures << "#{rel(path)} introduces network recipe-data markers before a data contract exists: #{used_markers.join(', ')}"
+end
+
+swift_files.each do |path|
+  PanStateContract.validate(File.read(path)).each do |failure|
+    failures << "#{rel(path)} #{failure}"
+  end
 end
 
 asset_root = ROOT.join('RecipeSwipe/Images.xcassets')
@@ -255,20 +262,6 @@ if picker_controller.file?
 
     if background_section.match?(/CGRectGetWidth\(bottomCardView\.frame\)\s*\)/)
       failures << 'RecipePickerViewController background image must not use bottomCardView width as height'
-    end
-  end
-
-  create_recipe_view_section = swift_method_source(picker_source, 'func createRecipeView(frame: CGRect, recipe: Recipe)')
-  if create_recipe_view_section.nil?
-    failures << 'RecipePickerViewController.createRecipeView could not be validated'
-  else
-    unless create_recipe_view_section.include?('if let panState = state') &&
-           create_recipe_view_section.include?('panState.thresholdRatio')
-      failures << 'RecipePickerViewController onPan callback must guard the optional pan state before reading it'
-    end
-
-    if create_recipe_view_section.include?('state.thresholdRatio')
-      failures << 'RecipePickerViewController onPan callback must not dereference the nullable state directly'
     end
   end
 

@@ -1,6 +1,6 @@
 # Repository-Wide Swipe Pan-State Guards
 
-## Status: In Progress
+## Status: Completed
 
 ## Context
 
@@ -24,14 +24,27 @@ from reintroducing the same crash pattern elsewhere.
 - Add hostile mutation coverage for missing guards and direct nullable access.
 - Record the archived-toolchain verification boundary truthfully.
 
-## Planned Verification
+## Work Completed
+
+- Added optional binding to the remaining `ViewController` pan callback.
+- Added a reusable contract that inspects every tracked Swift `onPan` closure.
+- Added focused tests covering typed and inferred callbacks, nested blocks,
+  multiple callbacks, missing guards, direct dereferences, and misplaced guards.
+- Wired the mutation suite into both structural and full verification targets.
+- Updated maintenance documentation to describe repository-wide enforcement.
+
+## Verification
 
 - `ruby scripts/check-ios-source.rb`
-- `ruby scripts/test-ios-source-contract.rb`
+- `ruby scripts/test-pan-state-contract.rb`
 - `make structural`
 - `make check`
 - Focused hostile mutations of both callback implementations
 - `git diff --check`
+
+The focused contract suite passed 24 assertions and rejected six hostile
+nullable-state mutations. `make check` completed successfully; on this Linux
+host it truthfully reported that Xcode compilation and XCTest were not run.
 
 ## Xcode Boundary
 

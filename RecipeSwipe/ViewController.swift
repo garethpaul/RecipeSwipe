@@ -24,8 +24,10 @@ class ViewController: UIViewController, MDCSwipeToChooseDelegate {
 
 
         options.onPan = { state -> Void in
-            if state.thresholdRatio == 1 && state.direction == MDCSwipeDirection.Left {
-                println("Photo deleted!")
+            if let panState = state {
+                if panState.thresholdRatio == 1 && panState.direction == MDCSwipeDirection.Left {
+                    println("Photo deleted!")
+                }
             }
         }
 

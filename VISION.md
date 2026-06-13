@@ -33,7 +33,7 @@ Priority:
 - Keep asset catalog filenames contained and PNG/JPEG files signature-checked
 - Keep optional recipe values guarded before saving, skipping, or displaying
 - Keep swipe animation parent-view access guarded before reading `superview`
-- Keep swipe pan callbacks guarded before reading nullable bridge state
+- Keep every swipe pan callback guarded before reading nullable bridge state
 - Keep Xcode user-state files out of tracked source
 - Run the dependency-free structural gate on a fixed macOS runner with
   credential-free checkout, read-only permissions, and pinned actions

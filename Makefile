@@ -5,12 +5,14 @@ lint:
 
 contract-test:
 	ruby scripts/test-asset-contract.rb
+	ruby scripts/test-pan-state-contract.rb
 	ruby scripts/test-workflow-contract.rb
 
 structural: lint contract-test
 
 test:
 	ruby scripts/test-asset-contract.rb
+	ruby scripts/test-pan-state-contract.rb
 	ruby scripts/test-workflow-contract.rb
 	@if command -v xcodebuild >/dev/null 2>&1; then \
 		xcodebuild test -workspace RecipeSwipe.xcworkspace -scheme RecipeSwipe -destination 'platform=iOS Simulator,name=iPhone 6' ; \
