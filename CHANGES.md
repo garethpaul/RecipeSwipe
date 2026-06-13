@@ -1,5 +1,10 @@
 # Changes
 
+## 2026-06-13
+
+- Restricted swipe completion to explicit Left and Right directions so
+  `MDCSwipeDirection.None` cannot skip a recipe or advance the card stack.
+
 ## 2026-06-12
 
 - Guarded the swipe pan callback before reading its implicitly unwrapped state

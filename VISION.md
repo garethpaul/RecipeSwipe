@@ -29,6 +29,7 @@ Priority:
 - Keep image-only like/nope controls labelled for accessibility
 - Disable like/nope controls when no recipe card is active
 - Keep swipe delegate callbacks guarded before advancing the card stack
+- Ignore `MDCSwipeDirection.None` without saving, skipping, or advancing cards
 - Keep sample recipe image loading guarded against missing assets
 - Keep asset catalog filenames contained and PNG/JPEG files signature-checked
 - Keep optional recipe values guarded before saving, skipping, or displaying

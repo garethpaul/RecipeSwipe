@@ -75,9 +75,10 @@ The setup commands above are derived from repository files. Legacy mobile, Pytho
   focused mutation tests enforce both callback syntaxes. The validator keeps
   the image-only like/nope buttons labelled for accessibility,
   disables them when no recipe card is active, and rejects tracked Xcode
-  user-state files.
+  user-state files. Swipe completion accepts only explicit Left or Right
+  directions; `MDCSwipeDirection.None` does not mutate recipes or advance cards.
 - `make structural` runs the static source validator plus dependency-free
-  workflow contract mutation tests and asset catalog file-integrity tests.
+  workflow, swipe-direction, pan-state, and asset file-integrity contract tests.
 - GitHub Actions runs that structural gate on macOS 15 with credential-free
   checkout, read-only permissions, pinned checkout code, and manual dispatch.
   It intentionally does not install CocoaPods 0.35 dependencies or build this

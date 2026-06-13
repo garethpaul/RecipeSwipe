@@ -1,6 +1,6 @@
 # Explicit Swipe Direction Handling
 
-## Status: Pending
+## Status: Completed
 
 ## Context
 
@@ -39,8 +39,25 @@ recipe and advance the card stack without an actual choice.
 
 ## Work Completed
 
-Pending implementation.
+- Replaced the catch-all non-Right branch with an explicit Left branch and an
+  early fallback return before recipe or card-stack mutation.
+- Added a reusable balanced-method structural contract for Right/Left actions,
+  fallback return, and stack-advance ordering.
+- Added Minitest coverage for valid source, malformed delegates, and eight
+  hostile direction/action/order mutations, then wired it into both Make gates.
+- Synchronized maintenance, security, vision, and change-log documentation.
 
 ## Verification Results
 
-Pending implementation and validation.
+- `ruby scripts/test-swipe-direction-contract.rb` passed 4 tests and 26 assertions.
+- `ruby scripts/check-ios-source.rb`, `make structural`, and `make check`
+  passed all locally available gates; the full gate truthfully reported
+  `xcodebuild unavailable; XCTest suite not run` and
+  `xcodebuild unavailable; compile check not run`.
+- The hostile gate rejected all nine actual-source and wiring mutations,
+  including generic or None direction handling, missing fallback return,
+  duplicate cross-direction actions, early card advancement, removed checker
+  invocation, removed Make wiring, and incomplete plan status.
+- Workflow YAML parsing, exact-base protected-file comparison, added-line secret
+  screening, generated-artifact screening, and `git diff --check` passed before
+  the shipping commit.

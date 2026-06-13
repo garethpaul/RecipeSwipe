@@ -68,11 +68,13 @@ class RecipePickerViewController: UIViewController, MDCSwipeToChooseDelegate {
                     saveRecipe(recipe)
                 }
                 println("Recipe saved!")
-            } else {
+            } else if (direction == MDCSwipeDirection.Left) {
                 if let recipe = rpv.recipe {
                     skipRecipe(recipe)
                 }
                 println("Recipe skipped!")
+            } else {
+                return
             }
 
             topCardView = bottomCardView

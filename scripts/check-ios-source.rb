@@ -7,11 +7,14 @@ require 'pathname'
 require 'set'
 require_relative 'asset-contract'
 require_relative 'pan-state-contract'
+require_relative 'swipe-direction-contract'
 require_relative 'workflow-contract'
 
 ROOT = Pathname.new(__dir__).parent.expand_path
 CANONICAL_PLAN = ROOT.join('docs/plans/2026-06-08-recipeswipe-baseline.md')
 HOSTED_PLAN = ROOT.join('docs/plans/2026-06-10-hosted-structural-validation.md')
+SWIPE_DIRECTION_PLAN = ROOT.join('docs/plans/2026-06-13-explicit-swipe-direction.md')
+MAKEFILE = ROOT.join('Makefile')
 WORKFLOW = ROOT.join('.github/workflows/check.yml')
 DOCS_PLANS = Dir.glob(ROOT.join('docs/plans/*.md')).sort
 
@@ -72,6 +75,15 @@ DOCS_PLANS.each do |plan_path|
   end
 end
 
+if MAKEFILE.file?
+  makefile = MAKEFILE.read
+  unless makefile.scan('ruby scripts/test-swipe-direction-contract.rb').length == 2
+    failures << 'Makefile must run swipe direction contract tests from contract-test and test'
+  end
+else
+  failures << 'Makefile is missing'
+end
+
 if CANONICAL_PLAN.file?
   # The baseline plan stays canonical for the historical validator coverage.
 else
@@ -80,6 +92,22 @@ end
 
 unless HOSTED_PLAN.file?
   failures << "#{rel(HOSTED_PLAN)} is missing"
+end
+
+if SWIPE_DIRECTION_PLAN.file?
+  swipe_direction_plan = SWIPE_DIRECTION_PLAN.read
+  [
+    'passed 4 tests and 26 assertions',
+    'rejected all nine actual-source and wiring mutations',
+    'xcodebuild unavailable; XCTest suite not run',
+    'xcodebuild unavailable; compile check not run'
+  ].each do |evidence|
+    unless swipe_direction_plan.include?(evidence)
+      failures << "#{rel(SWIPE_DIRECTION_PLAN)} must record verification evidence #{evidence.inspect}"
+    end
+  end
+else
+  failures << "#{rel(SWIPE_DIRECTION_PLAN)} is missing"
 end
 
 if WORKFLOW.file?
@@ -250,6 +278,10 @@ if picker_controller.file?
     unless delegate_section.include?('if let rpv = view as? RecipePickerView')
       failures << 'RecipePickerViewController swipe delegate must guard the chosen view type'
     end
+  end
+
+  SwipeDirectionContract.validate(picker_source).each do |failure|
+    failures << "RecipePickerViewController swipe direction #{failure}"
   end
 
   background_section = swift_method_source(picker_source, 'func constructBackground()')
