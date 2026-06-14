@@ -14,6 +14,7 @@ ROOT = Pathname.new(__dir__).parent.expand_path
 CANONICAL_PLAN = ROOT.join('docs/plans/2026-06-08-recipeswipe-baseline.md')
 HOSTED_PLAN = ROOT.join('docs/plans/2026-06-10-hosted-structural-validation.md')
 SWIPE_DIRECTION_PLAN = ROOT.join('docs/plans/2026-06-13-explicit-swipe-direction.md')
+LOCATION_INDEPENDENT_MAKE_PLAN = ROOT.join('docs/plans/2026-06-14-location-independent-make.md')
 MAKEFILE = ROOT.join('Makefile')
 WORKFLOW = ROOT.join('.github/workflows/check.yml')
 DOCS_PLANS = Dir.glob(ROOT.join('docs/plans/*.md')).sort
@@ -77,11 +78,39 @@ end
 
 if MAKEFILE.file?
   makefile = MAKEFILE.read
-  unless makefile.scan('ruby scripts/test-swipe-direction-contract.rb').length == 2
-    failures << 'Makefile must run swipe direction contract tests from contract-test and test'
+  make_contracts = {
+    'override REPO_ROOT := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))' => 1,
+    'cd "$(REPO_ROOT)" && ruby scripts/check-ios-source.rb' => 1,
+    'cd "$(REPO_ROOT)" && ruby scripts/test-asset-contract.rb' => 2,
+    'cd "$(REPO_ROOT)" && ruby scripts/test-pan-state-contract.rb' => 2,
+    'cd "$(REPO_ROOT)" && ruby scripts/test-swipe-direction-contract.rb' => 2,
+    'cd "$(REPO_ROOT)" && ruby scripts/test-workflow-contract.rb' => 2,
+    '@cd "$(REPO_ROOT)" && if command -v xcodebuild' => 2
+  }
+  make_contracts.each do |contract, expected_count|
+    actual_count = makefile.scan(contract).length
+    next if actual_count == expected_count
+
+    failures << "Makefile must preserve rooted contract #{contract.inspect} #{expected_count} time(s), found #{actual_count}"
   end
 else
   failures << 'Makefile is missing'
+end
+
+if LOCATION_INDEPENDENT_MAKE_PLAN.file?
+  location_independent_make_plan = LOCATION_INDEPENDENT_MAKE_PLAN.read
+  [
+    'unrelated directory',
+    'hostile mutations rejected',
+    'xcodebuild unavailable; XCTest suite not run',
+    'xcodebuild unavailable; compile check not run'
+  ].each do |evidence|
+    unless location_independent_make_plan.include?(evidence)
+      failures << "#{rel(LOCATION_INDEPENDENT_MAKE_PLAN)} must record verification evidence #{evidence.inspect}"
+    end
+  end
+else
+  failures << "#{rel(LOCATION_INDEPENDENT_MAKE_PLAN)} is missing"
 end
 
 if CANONICAL_PLAN.file?

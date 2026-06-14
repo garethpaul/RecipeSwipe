@@ -58,6 +58,6 @@ class SwipeDirectionContractTest < Minitest::Test
     checker_source = File.read(File.expand_path('check-ios-source.rb', __dir__))
 
     assert_includes checker_source, 'SwipeDirectionContract.validate'
-    assert_includes checker_source, "makefile.scan('ruby scripts/test-swipe-direction-contract.rb').length == 2"
+    assert_includes checker_source, '\'cd "$(REPO_ROOT)" && ruby scripts/test-swipe-direction-contract.rb\' => 2'
   end
 end

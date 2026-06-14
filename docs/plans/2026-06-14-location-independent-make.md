@@ -1,6 +1,6 @@
 # Location-Independent Archived iOS Gates
 
-## Status: Planned
+## Status: Completed
 
 ## Context
 
@@ -33,8 +33,25 @@ iOS structural gate.
   captured-prompt, and generated-artifact scans
 - `git diff --check`
 
-## Work Planned
+## Work Completed
 
-- Add an override-protected absolute repository root to the Makefile.
-- Root Ruby structural checks plus conditional XCTest and build recipes.
-- Extend the source checker with exact Make and completed-plan contracts.
+- Added an override-protected absolute repository root to the Makefile.
+- Rooted Ruby structural checks plus conditional XCTest and build recipes.
+- Extended the source checker with exact Make and completed-plan contracts.
+
+## Verification Results
+
+- Every Make alias passed from both the repository root and an unrelated
+  directory with `REPO_ROOT=/tmp` supplied on the command line.
+- Eight hostile mutations rejected removal of override protection, lint
+  rooting, each structural-script class, the XCTest root, and the build root.
+- Asset contracts passed 11 tests and 33 assertions, pan-state contracts passed
+  5 tests and 24 assertions, swipe-direction contracts passed 4 tests and 26
+  assertions, and workflow contracts rejected 13 mutations.
+- The Linux host truthfully reported `xcodebuild unavailable; XCTest suite not run`
+  and `xcodebuild unavailable; compile check not run`.
+- Exact-base checks preserved Swift sources and tests, project and workspace,
+  Pod manifests, vendored Pods, and workflow; no generated Apple artifacts
+  remained.
+- `git diff --check` and secret, captured-prompt, dependency, workflow, and
+  generated-artifact scans passed.
