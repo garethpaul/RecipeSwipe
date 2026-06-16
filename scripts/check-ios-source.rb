@@ -6,6 +6,7 @@ require 'open3'
 require 'pathname'
 require 'set'
 require_relative 'asset-contract'
+require_relative 'name-label-layout-contract'
 require_relative 'pan-state-contract'
 require_relative 'swipe-direction-contract'
 require_relative 'workflow-contract'
@@ -82,6 +83,7 @@ if MAKEFILE.file?
     'override REPO_ROOT := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))' => 1,
     'cd "$(REPO_ROOT)" && ruby scripts/check-ios-source.rb' => 1,
     'cd "$(REPO_ROOT)" && ruby scripts/test-asset-contract.rb' => 2,
+    'cd "$(REPO_ROOT)" && ruby scripts/test-name-label-layout-contract.rb' => 2,
     'cd "$(REPO_ROOT)" && ruby scripts/test-pan-state-contract.rb' => 2,
     'cd "$(REPO_ROOT)" && ruby scripts/test-swipe-direction-contract.rb' => 2,
     'cd "$(REPO_ROOT)" && ruby scripts/test-workflow-contract.rb' => 2,
@@ -354,6 +356,15 @@ if picker_controller.file?
   end
 else
   failures << 'RecipeSwipe/RecipePickerViewController.swift is missing'
+end
+
+recipe_picker_view = ROOT.join('RecipeSwipe/RecipePickerView.swift')
+if recipe_picker_view.file?
+  NameLabelLayoutContract.validate(recipe_picker_view.read).each do |failure|
+    failures << "RecipePickerView name label #{failure}"
+  end
+else
+  failures << 'RecipeSwipe/RecipePickerView.swift is missing'
 end
 
 if failures.empty?

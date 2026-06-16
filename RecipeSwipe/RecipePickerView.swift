@@ -68,6 +68,8 @@ class RecipePickerView : MDCSwipeToChooseView {
         //        )
 
         let nameLabel: UILabel = UILabel(frame: infoView.bounds)
+        nameLabel.autoresizingMask = UIViewAutoresizing.FlexibleWidth |
+            UIViewAutoresizing.FlexibleHeight
         if let recipe = self.recipe {
             nameLabel.text = recipe.name
         } else {

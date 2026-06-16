@@ -75,8 +75,10 @@ The setup commands above are derived from repository files. Legacy mobile, Pytho
   focused mutation tests enforce both callback syntaxes. The validator keeps
   the image-only like/nope buttons labelled for accessibility,
   disables them when no recipe card is active, and rejects tracked Xcode
-  user-state files. Swipe completion accepts only explicit Left or Right
-  directions; `MDCSwipeDirection.None` does not mutate recipes or advance cards.
+  user-state files. The recipe name label follows both dimensions of its
+  resizing information strip. Swipe completion accepts only explicit Left or
+  Right directions; `MDCSwipeDirection.None` does not mutate recipes or advance
+  cards.
 - `make structural` runs the static source validator plus dependency-free
   workflow, swipe-direction, pan-state, and asset file-integrity contract tests.
 - GitHub Actions runs that structural gate on macOS 15 with credential-free
@@ -130,6 +132,8 @@ When the required SDK or runtime is unavailable, use static checks and source re
   callback guard.
 - See `docs/plans/2026-06-13-all-pan-state-guards.md` for repository-wide pan
   callback enforcement and hostile mutation coverage.
+- See `docs/plans/2026-06-16-recipe-name-label-autoresizing.md` for the recipe
+  name label resizing contract and hostile mutation coverage.
 
 ## Contributing
 

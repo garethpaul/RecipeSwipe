@@ -1,6 +1,6 @@
 # Recipe Name Label Autoresizing
 
-## Status: In Progress
+## Status: Completed
 
 ## Context
 
@@ -33,3 +33,22 @@ therefore leave the label narrower or shorter than its container.
   overwritten autoresizing masks
 - exact diff, generated-artifact, secret-like addition, and worktree audits
 
+## Work Completed
+
+- Added width and height autoresizing to the recipe name label before it is
+  attached to its resizing info container.
+- Added a standalone static contract and wired its focused tests into every
+  portable Make test lane.
+- Documented the layout invariant in the README maintenance baseline.
+
+## Verification Results
+
+- The focused contract passed 4 tests and 19 assertions.
+- Five actual-source hostile mutations were rejected for missing width, missing
+  height, wrong target, mask overwrite, and post-attachment configuration.
+- Repository-root and external-directory `make check` both passed iOS source
+  validation, 11 asset tests with 33 assertions, 4 name-label tests with 19
+  assertions, 5 pan-state tests with 24 assertions, 4 swipe-direction tests
+  with 26 assertions, and 13 workflow mutations.
+- The Linux host truthfully reported `xcodebuild unavailable; XCTest suite not run`
+  and `xcodebuild unavailable; compile check not run` in both full gates.

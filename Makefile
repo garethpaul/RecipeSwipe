@@ -7,6 +7,7 @@ lint:
 
 contract-test:
 	cd "$(REPO_ROOT)" && ruby scripts/test-asset-contract.rb
+	cd "$(REPO_ROOT)" && ruby scripts/test-name-label-layout-contract.rb
 	cd "$(REPO_ROOT)" && ruby scripts/test-pan-state-contract.rb
 	cd "$(REPO_ROOT)" && ruby scripts/test-swipe-direction-contract.rb
 	cd "$(REPO_ROOT)" && ruby scripts/test-workflow-contract.rb
@@ -15,6 +16,7 @@ structural: lint contract-test
 
 test:
 	cd "$(REPO_ROOT)" && ruby scripts/test-asset-contract.rb
+	cd "$(REPO_ROOT)" && ruby scripts/test-name-label-layout-contract.rb
 	cd "$(REPO_ROOT)" && ruby scripts/test-pan-state-contract.rb
 	cd "$(REPO_ROOT)" && ruby scripts/test-swipe-direction-contract.rb
 	cd "$(REPO_ROOT)" && ruby scripts/test-workflow-contract.rb
