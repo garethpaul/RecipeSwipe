@@ -13,10 +13,14 @@ module SwipeStateContract
     failures = []
 
     failures << 'must bind both approval and completion callbacks to the active card identity' if controller.scan('recipeView === topCardView').length < 2
-    failures << 'must reject duplicate or reentrant swipes throughout the lifecycle' if controller.scan('!isSwipeInFlight').length < 5
+    failures << 'must reject duplicate or reentrant swipes throughout the lifecycle' if controller.scan('!isSwipeInFlight').length < 4
     require_text(failures, controller, 'deck.consumeTop(direction: intent, token: token)', 'consume cards with the captured generation token')
     require_text(failures, controller, 'state.view === self.topCardView', 'ignore stale pan callbacks')
     require_text(failures, controller, 'pendingProgrammaticIntent == intent', 'bind programmatic swipes to their explicit direction')
+    require_text(failures, controller, 'pendingProgrammaticIntent == nil,', 'reject repeated programmatic button requests while delegate approval is pending')
+    require_text(failures, controller, 'pendingProgrammaticCard === recipeView', 'bind programmatic swipes to their pending card identity')
+    require_text(failures, controller, 'pendingProgrammaticToken == deck.topToken', 'bind programmatic swipes to their pending deck token')
+    require_text(failures, controller, 'recipeView.superview === self.view', 'reject detached programmatic cards')
     require_text(failures, controller, 'translationX: Double(recognizer.translation(in: card).x)', 'validate gesture translation')
     require_text(failures, controller, 'velocityX: Double(recognizer.velocity(in: card).x)', 'validate gesture velocity')
     require_text(failures, controller, 'let nextBottom', 'own bottom-card animation completion by immutable view identity')

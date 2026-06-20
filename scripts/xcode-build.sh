@@ -2,9 +2,24 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-DERIVED_DATA="${TMPDIR:-/tmp}/RecipeSwipe-Build"
+DERIVED_DATA="$(mktemp -d "${TMPDIR:-/tmp}/RecipeSwipe-Build.XXXXXX")"
 
-rm -rf "$DERIVED_DATA"
+cleanup() {
+  rm -rf "$DERIVED_DATA"
+}
+
+handle_signal() {
+  local signal="$1"
+  cleanup
+  trap - "$signal"
+  kill "-$signal" "$$"
+}
+
+trap cleanup EXIT
+trap 'handle_signal HUP' HUP
+trap 'handle_signal INT' INT
+trap 'handle_signal TERM' TERM
+
 xcodebuild build \
   -workspace "$ROOT/RecipeSwipe.xcworkspace" \
   -scheme RecipeSwipe \
@@ -12,4 +27,3 @@ xcodebuild build \
   -derivedDataPath "$DERIVED_DATA" \
   CODE_SIGNING_ALLOWED=NO \
   IPHONEOS_DEPLOYMENT_TARGET=12.0
-rm -rf "$DERIVED_DATA"

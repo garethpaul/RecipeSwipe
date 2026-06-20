@@ -12,6 +12,8 @@ final class RecipePickerViewController: UIViewController, @preconcurrency MDCSwi
     private var savedRecipes: [Recipe] = []
     private var activeSwipeToken: SwipeDeck<Recipe>.Token?
     private var pendingProgrammaticIntent: SwipeIntent?
+    private weak var pendingProgrammaticCard: RecipePickerView?
+    private var pendingProgrammaticToken: SwipeDeck<Recipe>.Token?
     private var isSwipeInFlight = false
 
     private let nopeButton = UIButton(type: .system)
@@ -62,23 +64,39 @@ final class RecipePickerViewController: UIViewController, @preconcurrency MDCSwi
     }
 
     func view(_ view: UIView, shouldBeChosenWith direction: MDCSwipeDirection) -> Bool {
-        guard
-            let recipeView = view as? RecipePickerView,
-            recipeView === topCardView,
-            !isSwipeInFlight,
-            let intent = swipeIntent(for: direction)
-        else {
+        guard let recipeView = view as? RecipePickerView else {
+            return false
+        }
+
+        guard recipeView === topCardView, !isSwipeInFlight else {
+            return false
+        }
+
+        guard let intent = swipeIntent(for: direction) else {
+            if recipeView === pendingProgrammaticCard {
+                clearPendingProgrammaticIntent()
+            }
             return false
         }
 
         if let pendingProgrammaticIntent {
-            guard pendingProgrammaticIntent == intent else { return false }
+            guard
+                pendingProgrammaticIntent == intent,
+                pendingProgrammaticCard === recipeView,
+                pendingProgrammaticToken == deck.topToken,
+                recipeView.superview === self.view
+            else {
+                clearPendingProgrammaticIntent()
+                return false
+            }
+            activeSwipeToken = pendingProgrammaticToken
+            clearPendingProgrammaticIntent()
         } else {
             guard gestureIntent(for: recipeView, direction: intent) == intent else { return false }
+            activeSwipeToken = deck.topToken
         }
 
         isSwipeInFlight = true
-        activeSwipeToken = deck.topToken
         updateSwipeButtonsEnabled()
         return true
     }
@@ -158,9 +176,15 @@ final class RecipePickerViewController: UIViewController, @preconcurrency MDCSwi
 
     private func resetSwipeLifecycle() {
         activeSwipeToken = nil
-        pendingProgrammaticIntent = nil
+        clearPendingProgrammaticIntent()
         isSwipeInFlight = false
         updateSwipeButtonsEnabled()
+    }
+
+    private func clearPendingProgrammaticIntent() {
+        pendingProgrammaticIntent = nil
+        pendingProgrammaticCard = nil
+        pendingProgrammaticToken = nil
     }
 
     private func topCardFrame() -> CGRect {
@@ -186,7 +210,7 @@ final class RecipePickerViewController: UIViewController, @preconcurrency MDCSwi
     }
 
     private func updateSwipeButtonsEnabled() {
-        let hasActiveCard = topCardView != nil && !isSwipeInFlight
+        let hasActiveCard = topCardView != nil && !isSwipeInFlight && pendingProgrammaticIntent == nil
         nopeButton.isEnabled = hasActiveCard
         likeButton.isEnabled = hasActiveCard
         emptyImageView.isHidden = topCardView != nil
@@ -234,14 +258,20 @@ final class RecipePickerViewController: UIViewController, @preconcurrency MDCSwi
     }
 
     private func requestSwipe(_ intent: SwipeIntent) {
-        guard !isSwipeInFlight, let topCardView else { return }
+        guard
+            !isSwipeInFlight,
+            pendingProgrammaticIntent == nil,
+            let topCardView,
+            topCardView.superview === view,
+            let token = deck.topToken
+        else {
+            return
+        }
         pendingProgrammaticIntent = intent
+        pendingProgrammaticCard = topCardView
+        pendingProgrammaticToken = token
         updateSwipeButtonsEnabled()
         topCardView.mdc_swipe(intent == .left ? .left : .right)
-        if !isSwipeInFlight {
-            pendingProgrammaticIntent = nil
-            updateSwipeButtonsEnabled()
-        }
     }
 
     private func constructBackground() {

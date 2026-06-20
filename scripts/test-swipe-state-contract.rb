@@ -40,6 +40,10 @@ abort("baseline invalid: #{baseline_failures.join(', ')}") unless baseline_failu
 mutations = [
   ['active-card identity', 'RecipeSwipe/RecipePickerViewController.swift', 'recipeView === topCardView', 'true'],
   ['in-flight ownership', 'RecipeSwipe/RecipePickerViewController.swift', '!isSwipeInFlight', 'true'],
+  ['pending programmatic request ownership', 'RecipeSwipe/RecipePickerViewController.swift', 'pendingProgrammaticIntent == nil,', 'true,'],
+  ['programmatic card identity', 'RecipeSwipe/RecipePickerViewController.swift', 'pendingProgrammaticCard === recipeView', 'true'],
+  ['programmatic token identity', 'RecipeSwipe/RecipePickerViewController.swift', 'pendingProgrammaticToken == deck.topToken', 'true'],
+  ['detached programmatic card', 'RecipeSwipe/RecipePickerViewController.swift', 'recipeView.superview === self.view', 'true'],
   ['generation token', 'RecipeSwipe/SwipeDeck.swift', 'token == topToken', 'true'],
   ['stale pan identity', 'RecipeSwipe/RecipePickerViewController.swift', 'state.view === self.topCardView', 'true'],
   ['translation threshold', 'RecipeSwipe/RecipePickerViewController.swift', 'translationX: Double(recognizer.translation(in: card).x)', 'translationX: 0'],
