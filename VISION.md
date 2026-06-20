@@ -29,12 +29,16 @@ Priority:
 - Keep image-only like/nope controls labelled for accessibility
 - Disable like/nope controls when no recipe card is active
 - Keep swipe delegate callbacks guarded before advancing the card stack
+- Ignore `MDCSwipeDirection.None` without saving, skipping, or advancing cards
 - Keep sample recipe image loading guarded against missing assets
+- Keep asset catalog filenames contained and PNG/JPEG files signature-checked
 - Keep optional recipe values guarded before saving, skipping, or displaying
 - Keep swipe animation parent-view access guarded before reading `superview`
+- Keep every swipe pan callback guarded before reading nullable bridge state
 - Keep Xcode user-state files out of tracked source
 - Run the dependency-free structural gate on a fixed macOS runner with
-  read-only permissions and pinned actions
+  credential-free checkout, read-only permissions, and pinned actions
+- Keep workflow policy covered by dependency-free hostile mutation tests
 - Keep hosted validation separate from unsupported modern Xcode builds and
   archived CocoaPods installation
 - Keep completed maintenance plans under `docs/plans`

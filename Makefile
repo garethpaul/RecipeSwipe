@@ -1,22 +1,24 @@
-.PHONY: build check lint test verify
+.PHONY: build check core-test lint structural test verify
+
+override REPO_ROOT := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
 
 lint:
-	ruby scripts/check-ios-source.rb
+	cd "$(REPO_ROOT)" && ruby scripts/check-ios-source.rb
 
-test:
-	@if command -v xcodebuild >/dev/null 2>&1; then \
-		xcodebuild test -workspace RecipeSwipe.xcworkspace -scheme RecipeSwipe -destination 'platform=iOS Simulator,name=iPhone 6' ; \
-	else \
-		echo "xcodebuild unavailable; XCTest suite not run"; \
-	fi
+structural: lint
+	cd "$(REPO_ROOT)" && ruby scripts/test-asset-contract.rb
+	cd "$(REPO_ROOT)" && ruby scripts/test-swipe-state-contract.rb
+	cd "$(REPO_ROOT)" && ruby scripts/test-workflow-contract.rb
+
+core-test:
+	cd "$(REPO_ROOT)" && scripts/swift-test.sh
+
+test: core-test
+	cd "$(REPO_ROOT)" && scripts/xcode-test.sh
 
 build:
-	@if command -v xcodebuild >/dev/null 2>&1; then \
-		xcodebuild -workspace RecipeSwipe.xcworkspace -scheme RecipeSwipe -sdk iphonesimulator build ; \
-	else \
-		echo "xcodebuild unavailable; compile check not run"; \
-	fi
+	cd "$(REPO_ROOT)" && scripts/xcode-build.sh
 
-verify: lint test build
+verify: structural test build
 
 check: verify

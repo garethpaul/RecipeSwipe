@@ -14,17 +14,23 @@ contracts.
 
 - Added fixed-runner macOS 15 validation for pushes to `master` and pull
   requests.
-- Kept hosted validation structural-only with `make lint`; it does not install
-  archived pods or invoke a modern Xcode build against the legacy project.
+- Kept hosted validation structural-only with `make structural`; it does not
+  install archived pods or invoke a modern Xcode build against the legacy project.
 - Limited the workflow token to read-only contents access and pinned checkout
-  to a reviewed commit.
+  to a reviewed commit, with persisted checkout credentials disabled.
+- Added manual dispatch and dependency-free mutation tests that reject
+  duplicate, relocated, or contradictory credentials, unreviewed actions,
+  write permissions, trigger or runner drift, missing bounds, and legacy build
+  or pod commands.
 - Made tracked-file inspection fail closed when Git cannot inspect the checkout.
-- Extended the structural validator to preserve the runner, permissions,
-  action pin, canonical command, and no-build/no-pod boundary.
+- Extended the structural validator to preserve the exact checkout contract,
+  runner, permissions, action set, canonical command, and no-build/no-pod
+  boundary.
 
 ## Verification
 
 - `ruby scripts/check-ios-source.rb`
 - `make lint`
+- `make structural`
 - `make check`
 - `git diff --check`

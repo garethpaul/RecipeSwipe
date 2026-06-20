@@ -28,7 +28,10 @@ Helpful reports include:
 - Review found network clients, sockets, web APIs, or service endpoints; changes in those areas should receive security-focused review before merge.
 - Review found file, document, data, or media parsing flows; changes in those areas should receive security-focused review before merge.
 - Dependency manifests detected: Podfile, Podfile.lock. Dependency updates should preserve lockfiles when present and avoid introducing packages without a clear maintenance reason.
-- Hosted validation runs dependency-free structural checks with read-only repository permissions and pinned checkout code. It does not install archived CocoaPods dependencies or execute an unsupported modern Xcode build.
+- Hosted validation runs dependency-free structural checks with credential-free checkout, read-only repository permissions, and pinned checkout code. It does not install archived CocoaPods dependencies or execute an unsupported modern Xcode build. Mutation tests reject duplicate, relocated, or contradictory credential settings, unreviewed actions, and write permissions.
+- Asset catalog validation keeps referenced filenames inside their imagesets,
+  rejects empty or oversized files, and verifies PNG/JPEG signatures without
+  claiming full image decoding.
 
 ## Mobile Privacy Notes
 
@@ -37,6 +40,9 @@ If this project requests device permissions such as location, camera, microphone
 ## Dependency and Supply Chain Security
 
 Dependency updates should come from trusted package managers and should keep lockfiles in sync when lockfiles exist. Do not commit credentials, private keys, tokens, generated secrets, or machine-local configuration. If a vulnerability depends on a compromised package, typosquatting risk, insecure transitive dependency, or unsafe build step, include the package name, affected version, and the path through which it is used.
+
+Swipe completion accepts only explicit Left or Right directions. A
+`MDCSwipeDirection.None` callback must not save, skip, or advance a recipe card.
 
 ## Safe Research Guidelines
 

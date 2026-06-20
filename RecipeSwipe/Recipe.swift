@@ -1,20 +1,11 @@
-//
-//  Recipe.swift
-//  RecipeSwipe
-//
-//  Created by Gareth Jones  on 12/26/14.
-//  Copyright (c) 2014 GarethPaul. All rights reserved.
-//
-
-import Foundation
 import UIKit
 
-class Recipe {
-    var name: String
-    var image: UIImage
+final class Recipe {
+    let name: String
+    let image: UIImage?
 
-    init(name: String, image: UIImage) {
-        self.name = name
+    init(name: String, image: UIImage?) {
+        self.name = RecipeName.normalized(name)
         self.image = image
     }
 }

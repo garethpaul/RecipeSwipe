@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		27D22584B1D9D160E98D2539 /* libPods-RecipeSwipe.a in Frameworks */ = {isa = PBXBuildFile; fileRef = AA767709245002F8D0323E8F /* libPods-RecipeSwipe.a */; };
+		ACE5F432CDF8F3FFCE529F3C /* SwipeDeck.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5CCCF90274912C3C86DFF1C1 /* SwipeDeck.swift */; };
 		FDAC65101A4E357500E977B3 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = FDAC650F1A4E357500E977B3 /* AppDelegate.swift */; };
 		FDAC65121A4E357500E977B3 /* ViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = FDAC65111A4E357500E977B3 /* ViewController.swift */; };
 		FDAC65151A4E357500E977B3 /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = FDAC65131A4E357500E977B3 /* Main.storyboard */; };
@@ -33,6 +34,7 @@
 
 /* Begin PBXFileReference section */
 		02F00C10F6D43AC2BE6807F4 /* Pods-RecipeSwipe.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-RecipeSwipe.release.xcconfig"; path = "Pods/Target Support Files/Pods-RecipeSwipe/Pods-RecipeSwipe.release.xcconfig"; sourceTree = "<group>"; };
+		5CCCF90274912C3C86DFF1C1 /* SwipeDeck.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SwipeDeck.swift; sourceTree = "<group>"; };
 		6BB3457F26B0906CAD9520D3 /* Pods-RecipeSwipe.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-RecipeSwipe.debug.xcconfig"; path = "Pods/Target Support Files/Pods-RecipeSwipe/Pods-RecipeSwipe.debug.xcconfig"; sourceTree = "<group>"; };
 		AA767709245002F8D0323E8F /* libPods-RecipeSwipe.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-RecipeSwipe.a"; sourceTree = BUILT_PRODUCTS_DIR; };
 		FDAC650A1A4E357500E977B3 /* RecipeSwipe.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = RecipeSwipe.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -120,6 +122,7 @@
 				FDAC65161A4E357500E977B3 /* Images.xcassets */,
 				FDAC65181A4E357500E977B3 /* LaunchScreen.xib */,
 				FDAC650D1A4E357500E977B3 /* Supporting Files */,
+				5CCCF90274912C3C86DFF1C1 /* SwipeDeck.swift */,
 			);
 			path = RecipeSwipe;
 			sourceTree = "<group>";
@@ -319,6 +322,7 @@
 				FDAC65101A4E357500E977B3 /* AppDelegate.swift in Sources */,
 				FDAC65331A4E3B3900E977B3 /* Recipe.swift in Sources */,
 				FDAC65391A4E3C7B00E977B3 /* API.swift in Sources */,
+				ACE5F432CDF8F3FFCE529F3C /* SwipeDeck.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -394,11 +398,12 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 8.2;
+				IPHONEOS_DEPLOYMENT_TARGET = 12.0;
 				MTL_ENABLE_DEBUG_INFO = YES;
 				ONLY_ACTIVE_ARCH = YES;
 				SDKROOT = iphoneos;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Debug;
@@ -431,9 +436,10 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 8.2;
+				IPHONEOS_DEPLOYMENT_TARGET = 12.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				VALIDATE_PRODUCT = YES;
 			};
@@ -444,10 +450,14 @@
 			baseConfigurationReference = 6BB3457F26B0906CAD9520D3 /* Pods-RecipeSwipe.debug.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ENABLE_TESTABILITY = YES;
 				INFOPLIST_FILE = RecipeSwipe/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 12.0;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
+				PRODUCT_BUNDLE_IDENTIFIER = com.garethpaul.RecipeSwipe;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_OBJC_BRIDGING_HEADER = RecipeSwipe/BridgeHeader.h;
+				SWIFT_VERSION = 5.0;
 			};
 			name = Debug;
 		};
@@ -457,9 +467,12 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				INFOPLIST_FILE = RecipeSwipe/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 12.0;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
+				PRODUCT_BUNDLE_IDENTIFIER = com.garethpaul.RecipeSwipe;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_OBJC_BRIDGING_HEADER = RecipeSwipe/BridgeHeader.h;
+				SWIFT_VERSION = 5.0;
 			};
 			name = Release;
 		};
@@ -475,9 +488,17 @@
 					"DEBUG=1",
 					"$(inherited)",
 				);
+				HEADER_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(SRCROOT)/Pods/Headers/Public",
+					"$(SRCROOT)/Pods/Headers/Public/MDCSwipeToChoose",
+				);
 				INFOPLIST_FILE = RecipeSwipeTests/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 12.0;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks @loader_path/Frameworks";
+				PRODUCT_BUNDLE_IDENTIFIER = com.garethpaul.RecipeSwipeTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_VERSION = 5.0;
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/RecipeSwipe.app/RecipeSwipe";
 			};
 			name = Debug;
@@ -490,9 +511,17 @@
 					"$(SDKROOT)/Developer/Library/Frameworks",
 					"$(inherited)",
 				);
+				HEADER_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(SRCROOT)/Pods/Headers/Public",
+					"$(SRCROOT)/Pods/Headers/Public/MDCSwipeToChoose",
+				);
 				INFOPLIST_FILE = RecipeSwipeTests/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 12.0;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks @loader_path/Frameworks";
+				PRODUCT_BUNDLE_IDENTIFIER = com.garethpaul.RecipeSwipeTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_VERSION = 5.0;
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/RecipeSwipe.app/RecipeSwipe";
 			};
 			name = Release;

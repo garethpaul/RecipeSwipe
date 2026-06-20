@@ -1,9 +1,34 @@
 # Changes
 
+## 2026-06-19
+
+- Modernized the archived app to Swift 5 and iOS 12 so its app and XCTest targets build with current Xcode.
+- Replaced callback-driven array mutation with a generation-token deck that rejects duplicate and stale swipe completions.
+- Added explicit translation/velocity direction validation, guarded nullable pan callbacks, and main-thread UI ownership.
+- Added bounded recipe-name sanitization, Dynamic Type, multiline labels, and explicit card/button accessibility.
+- Added location-independent SwiftPM, XCTest, mutation, asset, workflow, and dual-architecture simulator gates.
+
+## 2026-06-13
+
+- Restricted swipe completion to explicit Left and Right directions so
+  `MDCSwipeDirection.None` cannot skip a recipe or advance the card stack.
+
+## 2026-06-12
+
+- Guarded the swipe pan callback before reading its implicitly unwrapped state
+  and added structural validation for the optional binding.
+- Added dependency-free asset catalog path, size, extension, and PNG/JPEG
+  signature validation.
+- Added Minitest coverage and wired asset integrity into structural and full
+  Make gates.
+
 ## 2026-06-10
 
-- Added pinned, read-only macOS structural validation without installing
-  archived pods or invoking an unsupported modern Xcode build.
+- Added pinned, credential-free, read-only macOS structural validation without
+  installing archived pods or invoking an unsupported modern Xcode build.
+- Added dependency-free workflow contract mutation tests for trigger,
+  credential, action, permission, runner, timeout, dispatch, and legacy-build
+  drift.
 - Made tracked-file inspection fail closed when Git cannot inspect the checkout.
 - Added static validation to reject tracked Xcode user-state files.
 - Disabled like/nope controls when no recipe card is active so the empty state
