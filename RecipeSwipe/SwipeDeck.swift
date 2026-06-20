@@ -78,6 +78,66 @@ struct SwipeDeck<Element> {
     }
 }
 
+struct SwipeLifecycle<Token: Equatable> {
+    private(set) var pendingProgrammaticIntent: SwipeIntent?
+    private(set) var activeIntent: SwipeIntent?
+    private(set) var activeToken: Token?
+
+    var isSwipeInFlight: Bool {
+        activeIntent != nil && activeToken != nil
+    }
+
+    var isBusy: Bool {
+        pendingProgrammaticIntent != nil || isSwipeInFlight
+    }
+
+    mutating func requestProgrammaticSwipe(_ intent: SwipeIntent) -> Bool {
+        guard !isBusy else { return false }
+        pendingProgrammaticIntent = intent
+        return true
+    }
+
+    mutating func beginProgrammaticSwipe(intent: SwipeIntent, token: Token?) -> Bool {
+        guard !isSwipeInFlight else { return false }
+        guard pendingProgrammaticIntent == intent, let token else {
+            reset()
+            return false
+        }
+
+        pendingProgrammaticIntent = nil
+        activeIntent = intent
+        activeToken = token
+        return true
+    }
+
+    mutating func beginUserSwipe(intent: SwipeIntent, token: Token?) -> Bool {
+        guard !isBusy, let token else { return false }
+        activeIntent = intent
+        activeToken = token
+        return true
+    }
+
+    mutating func completeSwipe(intent: SwipeIntent) -> Token? {
+        guard activeIntent == intent, let token = activeToken else {
+            reset()
+            return nil
+        }
+
+        reset()
+        return token
+    }
+
+    mutating func cancelSwipe() {
+        reset()
+    }
+
+    private mutating func reset() {
+        pendingProgrammaticIntent = nil
+        activeIntent = nil
+        activeToken = nil
+    }
+}
+
 enum RecipeName {
     static func normalized(_ rawValue: String, maximumLength: Int = 80) -> String {
         let cleanedScalars = rawValue.unicodeScalars.map { scalar -> Character in
