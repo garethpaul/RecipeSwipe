@@ -20,16 +20,16 @@ BASELINE = <<~YAML
     cancel-in-progress: true
 
   jobs:
-    structural:
+    check:
       runs-on: macos-15
-      timeout-minutes: 10
+      timeout-minutes: 20
       steps:
         - name: Check out repository
           uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
           with:
             persist-credentials: false
-        - name: Validate archived iOS source
-          run: make structural
+        - name: Validate maintained iOS project
+          run: make check
 YAML
 
 def assert_valid(workflow)
@@ -54,16 +54,16 @@ mutations = {
   'contradictory credentials' => mutate('contradictory credentials', 'persist-credentials: false', "persist-credentials: false\n          persist-credentials: true"),
   'relocated credentials' => mutate('relocated credentials', "        with:\n          persist-credentials: false\n", '').sub('permissions:', "persist-credentials: false\n\npermissions:"),
   'floating checkout action' => mutate('floating checkout action', WorkflowContract::CHECKOUT_ACTION, 'actions/checkout@v6'),
-  'extra action' => mutate('extra action', '      - name: Validate archived iOS source', "      - uses: example/unreviewed-action@v1\n      - name: Validate archived iOS source"),
+  'extra action' => mutate('extra action', '      - name: Validate maintained iOS project', "      - uses: example/unreviewed-action@v1\n      - name: Validate maintained iOS project"),
   'write permission' => mutate('write permission', 'contents: read', "contents: read\n  issues: write"),
   'missing push validation' => mutate('missing push validation', "  push:\n    branches: [master]\n", ''),
   'missing pull request validation' => mutate('missing pull request validation', "  pull_request:\n", ''),
   'missing manual dispatch' => mutate('missing manual dispatch', "  workflow_dispatch:\n", ''),
   'duplicate runner' => mutate('duplicate runner', '    runs-on: macos-15', "    runs-on: macos-15\n    runs-on: macos-15"),
-  'unbounded job' => mutate('unbounded job', "    timeout-minutes: 10\n", ''),
+  'unbounded job' => mutate('unbounded job', "    timeout-minutes: 20\n", ''),
   'continued failure' => mutate('continued failure', '    steps:', "    continue-on-error: true\n    steps:"),
-  'legacy Xcode build' => mutate('legacy Xcode build', 'run: make structural', 'run: xcodebuild build'),
-  'archived pod installation' => mutate('archived pod installation', 'run: make structural', 'run: pod install && make structural')
+  'inline Xcode build' => mutate('inline Xcode build', 'run: make check', 'run: xcodebuild build'),
+  'pod installation' => mutate('pod installation', 'run: make check', 'run: pod install && make check')
 }
 
 mutations.each do |description, workflow|

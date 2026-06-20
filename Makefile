@@ -1,38 +1,24 @@
-.PHONY: build check contract-test lint structural test verify
+.PHONY: build check core-test lint structural test verify
 
 override REPO_ROOT := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
 
 lint:
 	cd "$(REPO_ROOT)" && ruby scripts/check-ios-source.rb
 
-contract-test:
+structural: lint
 	cd "$(REPO_ROOT)" && ruby scripts/test-asset-contract.rb
-	cd "$(REPO_ROOT)" && ruby scripts/test-name-label-layout-contract.rb
-	cd "$(REPO_ROOT)" && ruby scripts/test-pan-state-contract.rb
-	cd "$(REPO_ROOT)" && ruby scripts/test-swipe-direction-contract.rb
+	cd "$(REPO_ROOT)" && ruby scripts/test-swipe-state-contract.rb
 	cd "$(REPO_ROOT)" && ruby scripts/test-workflow-contract.rb
 
-structural: lint contract-test
+core-test:
+	cd "$(REPO_ROOT)" && scripts/swift-test.sh
 
-test:
-	cd "$(REPO_ROOT)" && ruby scripts/test-asset-contract.rb
-	cd "$(REPO_ROOT)" && ruby scripts/test-name-label-layout-contract.rb
-	cd "$(REPO_ROOT)" && ruby scripts/test-pan-state-contract.rb
-	cd "$(REPO_ROOT)" && ruby scripts/test-swipe-direction-contract.rb
-	cd "$(REPO_ROOT)" && ruby scripts/test-workflow-contract.rb
-	@cd "$(REPO_ROOT)" && if command -v xcodebuild >/dev/null 2>&1; then \
-		xcodebuild test -workspace RecipeSwipe.xcworkspace -scheme RecipeSwipe -destination 'platform=iOS Simulator,name=iPhone 6' ; \
-	else \
-		echo "xcodebuild unavailable; XCTest suite not run"; \
-	fi
+test: core-test
+	cd "$(REPO_ROOT)" && scripts/xcode-test.sh
 
 build:
-	@cd "$(REPO_ROOT)" && if command -v xcodebuild >/dev/null 2>&1; then \
-		xcodebuild -workspace RecipeSwipe.xcworkspace -scheme RecipeSwipe -sdk iphonesimulator build ; \
-	else \
-		echo "xcodebuild unavailable; compile check not run"; \
-	fi
+	cd "$(REPO_ROOT)" && scripts/xcode-build.sh
 
-verify: lint test build
+verify: structural test build
 
 check: verify

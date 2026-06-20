@@ -1,17 +1,12 @@
-//
 import UIKit
 
-class RecipeViewController: UIViewController {
-
-    @IBOutlet weak var imageView: UIImageView!
+final class RecipeViewController: UIViewController {
+    @IBOutlet private weak var imageView: UIImageView!
 
     var recipe: Recipe?
 
     override func viewDidLoad() {
         super.viewDidLoad()
-
-        if let recipe = self.recipe {
-            self.imageView.image = recipe.image
-        }
+        imageView.image = recipe?.image ?? UIImage(named: "photo")
     }
 }

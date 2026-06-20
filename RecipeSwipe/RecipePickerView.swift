@@ -1,85 +1,56 @@
-//
-
 import UIKit
 
-class RecipePickerView : MDCSwipeToChooseView {
-    var recipe: Recipe?
-    var infoView: UIView = UIView()
+final class RecipePickerView: MDCSwipeToChooseView {
+    let recipe: Recipe
+    private let infoView = UIView()
+    private let nameLabel = UILabel()
 
-    required init(coder: NSCoder) {
-        super.init(coder: coder)
+    required init?(coder: NSCoder) {
+        return nil
     }
 
     init(frame: CGRect, recipe: Recipe, options: MDCSwipeToChooseViewOptions) {
+        self.recipe = recipe
         super.init(frame: frame, options: options)
 
-        self.recipe = recipe
-
-        // Setup resizing masks
-        self.autoresizingMask = UIViewAutoresizing.FlexibleHeight |
-            UIViewAutoresizing.FlexibleWidth |
-            UIViewAutoresizing.FlexibleBottomMargin
-
-        self.imageView.autoresizingMask = self.autoresizingMask
-        self.imageView.contentMode = UIViewContentMode.ScaleAspectFill
-
-        self.imageView.frame = CGRectMake(
-            2,
-            2,
-            CGRectGetWidth(self.bounds) - 4,
-            CGRectGetHeight(self.bounds) - 4
-        )
+        autoresizingMask = [.flexibleHeight, .flexibleWidth, .flexibleBottomMargin]
+        imageView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+        imageView.contentMode = .scaleAspectFill
+        imageView.clipsToBounds = true
+        imageView.frame = bounds.insetBy(dx: 2, dy: 2)
 
         constructInfoView()
-        loadImageView()
+        imageView.image = recipe.image ?? UIImage(named: "photo")
+
+        isAccessibilityElement = true
+        accessibilityLabel = recipe.name
+        accessibilityHint = "Swipe left to skip or right to save"
+        accessibilityTraits = .image
     }
 
-    func constructInfoView() {
+    private func constructInfoView() {
         let infoViewHeight: CGFloat = 60
-
-        let infoViewFrame: CGRect = CGRectMake(
-            0,
-            CGRectGetHeight(self.bounds) - infoViewHeight,
-            CGRectGetWidth(self.bounds),
-            infoViewHeight
+        infoView.frame = CGRect(
+            x: 0,
+            y: bounds.height - infoViewHeight,
+            width: bounds.width,
+            height: infoViewHeight
         )
-
-        infoView = UIView(frame: infoViewFrame)
-        infoView.backgroundColor = UIColor.whiteColor()
+        infoView.backgroundColor = .white
         infoView.clipsToBounds = true
-        infoView.autoresizingMask = UIViewAutoresizing.FlexibleWidth |
-            UIViewAutoresizing.FlexibleTopMargin;
+        infoView.autoresizingMask = [.flexibleWidth, .flexibleTopMargin]
+        addSubview(infoView)
 
-        self.addSubview(infoView)
-
-        constructNameLabel()
-    }
-
-    func loadImageView() {
-        self.imageView.image = self.recipe?.image
-    }
-
-    func constructNameLabel() {
-        //        let nameLabelFrame = CGRectMake(
-        //            5,
-        //            5,
-        //            CGRectGetWidth(infoView.bounds),
-        //            18
-        //        )
-
-        let nameLabel: UILabel = UILabel(frame: infoView.bounds)
-        nameLabel.autoresizingMask = UIViewAutoresizing.FlexibleWidth |
-            UIViewAutoresizing.FlexibleHeight
-        if let recipe = self.recipe {
-            nameLabel.text = recipe.name
-        } else {
-            nameLabel.text = ""
-        }
-        nameLabel.textAlignment = NSTextAlignment.Center
-        //nameLabel.textRectForBounds(nameLabel.bounds, limitedToNumberOfLines: 1)
-        nameLabel.font = UIFont.systemFontOfSize(20.0)
+        nameLabel.frame = infoView.bounds.insetBy(dx: 8, dy: 4)
+        nameLabel.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+        nameLabel.text = recipe.name
+        nameLabel.textAlignment = .center
+        nameLabel.font = .preferredFont(forTextStyle: .headline)
+        nameLabel.adjustsFontForContentSizeCategory = true
+        nameLabel.numberOfLines = 2
         nameLabel.adjustsFontSizeToFitWidth = true
-        
+        nameLabel.minimumScaleFactor = 0.7
+        nameLabel.isAccessibilityElement = false
         infoView.addSubview(nameLabel)
     }
 }

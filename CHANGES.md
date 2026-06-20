@@ -1,5 +1,13 @@
 # Changes
 
+## 2026-06-19
+
+- Modernized the archived app to Swift 5 and iOS 12 so its app and XCTest targets build with current Xcode.
+- Replaced callback-driven array mutation with a generation-token deck that rejects duplicate and stale swipe completions.
+- Added explicit translation/velocity direction validation, guarded nullable pan callbacks, and main-thread UI ownership.
+- Added bounded recipe-name sanitization, Dynamic Type, multiline labels, and explicit card/button accessibility.
+- Added location-independent SwiftPM, XCTest, mutation, asset, workflow, and dual-architecture simulator gates.
+
 ## 2026-06-13
 
 - Restricted swipe completion to explicit Left and Right directions so

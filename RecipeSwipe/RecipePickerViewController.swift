@@ -1,259 +1,312 @@
-//
-//  RecipePickerViewController.swift
-//  RecipeSwipe
-//
-//  Created by Gareth Jones  on 12/26/14.
-//  Copyright (c) 2014 GarethPaul. All rights reserved.
-//
-
 import UIKit
-import Foundation
 
-class RecipePickerViewController: UIViewController, MDCSwipeToChooseDelegate {
+@MainActor
+final class RecipePickerViewController: UIViewController, @preconcurrency MDCSwipeToChooseDelegate {
+    private let buttonDiameter: CGFloat = 50
+    private let buttonHorizontalPadding: CGFloat = 90
+    private let thresholdPolicy = SwipeThresholdPolicy(minimumTranslation: 80, minimumVelocity: 500)
 
-    let buttonDiameter: CGFloat = 50
-    let buttonHPadding: CGFloat = 90
+    private var deck = SwipeDeck<Recipe>(items: [])
+    private var topCardView: RecipePickerView?
+    private var bottomCardView: RecipePickerView?
+    private var savedRecipes: [Recipe] = []
+    private var activeSwipeToken: SwipeDeck<Recipe>.Token?
+    private var pendingProgrammaticIntent: SwipeIntent?
+    private var isSwipeInFlight = false
 
-    var recipes: Array<Recipe> = Array()
-    var topCardView: UIView = UIView()
-    var bottomCardView: UIView = UIView()
-    var savedRecipes: Array<Recipe> = Array()
-    var nopeButton: UIButton?
-    var likeButton: UIButton?
+    private let nopeButton = UIButton(type: .system)
+    private let likeButton = UIButton(type: .system)
+    private let emptyImageView = UIImageView(image: UIImage(named: "frown"))
+    private let emptyLabel = UILabel()
 
     override func viewDidLoad() {
         super.viewDidLoad()
+        constructBackground()
+        constructButtons()
 
-        // Fetch local sample recipes before constructing card views.
-        APIClient.fetchRecpes({(fetchedRecipes: Array<Recipe>) -> Void in
-            self.recipes = fetchedRecipes
-            self.loadInitialRecipeCards()
-            self.constructBackground()
-            self.constructNopeButton()
-            self.constructLikeButton()
-        })
+        APIClient.fetchRecipes { [weak self] recipes in
+            DispatchQueue.main.async {
+                self?.loadInitialRecipeCards(recipes: recipes)
+            }
+        }
     }
 
-    func loadInitialRecipeCards() -> Void {
-        if(self.recipes.count == 0) {
-            bottomCardView = UIView(frame: bottomCardViewFrame())
+    override func viewDidLayoutSubviews() {
+        super.viewDidLayoutSubviews()
+        layoutDeck()
+    }
+
+    private func loadInitialRecipeCards(recipes: [Recipe]) {
+        topCardView?.removeFromSuperview()
+        bottomCardView?.removeFromSuperview()
+        deck = SwipeDeck(items: recipes)
+        topCardView = deck.top.map { createRecipeView(frame: topCardFrame(), recipe: $0) }
+        bottomCardView = deck.bottom.map { createRecipeView(frame: bottomCardFrame(), recipe: $0) }
+
+        if let bottomCardView {
+            view.addSubview(bottomCardView)
+        }
+        if let topCardView {
+            view.addSubview(topCardView)
+        }
+        bringControlsToFront()
+        updateSwipeButtonsEnabled()
+    }
+
+    private func saveRecipe(_ recipe: Recipe) {
+        savedRecipes.append(recipe)
+    }
+
+    private func skipRecipe(_ recipe: Recipe) {
+        print("Recipe skipped: \(recipe.name)")
+    }
+
+    func view(_ view: UIView, shouldBeChosenWith direction: MDCSwipeDirection) -> Bool {
+        guard
+            let recipeView = view as? RecipePickerView,
+            recipeView === topCardView,
+            !isSwipeInFlight,
+            let intent = swipeIntent(for: direction)
+        else {
+            return false
+        }
+
+        if let pendingProgrammaticIntent {
+            guard pendingProgrammaticIntent == intent else { return false }
+        } else {
+            guard gestureIntent(for: recipeView, direction: intent) == intent else { return false }
+        }
+
+        isSwipeInFlight = true
+        activeSwipeToken = deck.topToken
+        updateSwipeButtonsEnabled()
+        return true
+    }
+
+    func viewDidCancelSwipe(_ view: UIView) {
+        guard view === topCardView else { return }
+        resetSwipeLifecycle()
+        UIView.animate(withDuration: 0.16) { [weak self] in
+            self?.bottomCardView?.frame = self?.bottomCardFrame() ?? .zero
+        }
+    }
+
+    func view(_ view: UIView, wasChosenWith direction: MDCSwipeDirection) {
+        guard
+            let recipeView = view as? RecipePickerView,
+            recipeView === topCardView,
+            isSwipeInFlight,
+            let intent = swipeIntent(for: direction),
+            let token = activeSwipeToken,
+            let consumedRecipe = deck.consumeTop(direction: intent, token: token)
+        else {
             return
         }
 
-        topCardView = createRecipeView(topCardViewFrame(), recipe: self.recipes.removeAtIndex(0))
-        self.view.addSubview(topCardView)
+        switch intent {
+        case .right:
+            saveRecipe(consumedRecipe)
+        case .left:
+            skipRecipe(consumedRecipe)
+        }
 
-        if(self.recipes.count > 0) {
-            bottomCardView = createRecipeView(bottomCardViewFrame(), recipe: self.recipes.removeAtIndex(0))
-            self.view.insertSubview(bottomCardView, belowSubview: topCardView)
-        } else {
-            bottomCardView = UIView(frame: bottomCardViewFrame())
+        topCardView = bottomCardView
+        topCardView?.frame = topCardFrame()
+
+        let nextBottom = deck.bottom.map { createRecipeView(frame: bottomCardFrame(), recipe: $0) }
+        bottomCardView = nextBottom
+        if let nextBottom {
+            nextBottom.alpha = 0
+            if let topCardView {
+                self.view.insertSubview(nextBottom, belowSubview: topCardView)
+            } else {
+                self.view.addSubview(nextBottom)
+            }
+            UIView.animate(
+                withDuration: 0.3,
+                delay: 0,
+                options: [.curveEaseInOut, .beginFromCurrentState],
+                animations: { nextBottom.alpha = 1 }
+            )
+        }
+
+        resetSwipeLifecycle()
+        bringControlsToFront()
+    }
+
+    private func swipeIntent(for direction: MDCSwipeDirection) -> SwipeIntent? {
+        switch direction {
+        case .left:
+            return .left
+        case .right:
+            return .right
+        default:
+            return nil
         }
     }
 
-    // TODO: save in CoreData
-    func saveRecipe(recipe: Recipe) -> Void {
-        self.savedRecipes.append(recipe)
+    private func gestureIntent(for card: RecipePickerView, direction: SwipeIntent) -> SwipeIntent? {
+        guard let recognizer = card.gestureRecognizers?.compactMap({ $0 as? UIPanGestureRecognizer }).first else {
+            return nil
+        }
+        return thresholdPolicy.intent(
+            direction: direction,
+            translationX: Double(recognizer.translation(in: card).x),
+            velocityX: Double(recognizer.velocity(in: card).x)
+        )
     }
 
-    // TODO: save in CoreData
-    func skipRecipe(recipe: Recipe) -> Void {
-        println("skippingr")
+    private func resetSwipeLifecycle() {
+        activeSwipeToken = nil
+        pendingProgrammaticIntent = nil
+        isSwipeInFlight = false
+        updateSwipeButtonsEnabled()
     }
 
-    func view(view: UIView!, wasChosenWithDirection direction: MDCSwipeDirection) {
-        if let rpv = view as? RecipePickerView {
-            if (direction == MDCSwipeDirection.Right) {
-                if let recipe = rpv.recipe {
-                    saveRecipe(recipe)
-                }
-                println("Recipe saved!")
-            } else if (direction == MDCSwipeDirection.Left) {
-                if let recipe = rpv.recipe {
-                    skipRecipe(recipe)
-                }
-                println("Recipe skipped!")
-            } else {
+    private func topCardFrame() -> CGRect {
+        let horizontalPadding: CGFloat = 40
+        let topPadding: CGFloat = max(view.safeAreaInsets.top + 24, 80)
+        let controlsHeight: CGFloat = 170
+        return CGRect(
+            x: horizontalPadding,
+            y: topPadding,
+            width: max(1, view.bounds.width - horizontalPadding * 2),
+            height: max(1, view.bounds.height - topPadding - controlsHeight)
+        )
+    }
+
+    private func bottomCardFrame() -> CGRect {
+        topCardFrame().offsetBy(dx: 0, dy: 10)
+    }
+
+    private func buttonY() -> CGFloat {
+        let cardBottom = bottomCardFrame().maxY
+        let availableHeight = max(0, view.bounds.height - view.safeAreaInsets.bottom - cardBottom)
+        return cardBottom + max(8, (availableHeight - buttonDiameter) / 2)
+    }
+
+    private func updateSwipeButtonsEnabled() {
+        let hasActiveCard = topCardView != nil && !isSwipeInFlight
+        nopeButton.isEnabled = hasActiveCard
+        likeButton.isEnabled = hasActiveCard
+        emptyImageView.isHidden = topCardView != nil
+        emptyLabel.isHidden = topCardView != nil
+    }
+
+    private func constructButtons() {
+        configureButton(
+            nopeButton,
+            image: UIImage(named: "nope"),
+            label: "Skip recipe",
+            tintColor: UIColor(red: 247 / 255, green: 91 / 255, blue: 37 / 255, alpha: 1),
+            action: #selector(nopeTopCardView)
+        )
+        configureButton(
+            likeButton,
+            image: UIImage(named: "liked"),
+            label: "Save recipe",
+            tintColor: .systemBlue,
+            action: #selector(likeTopCardView)
+        )
+    }
+
+    private func configureButton(
+        _ button: UIButton,
+        image: UIImage?,
+        label: String,
+        tintColor: UIColor,
+        action: Selector
+    ) {
+        button.setImage(image, for: .normal)
+        button.accessibilityLabel = label
+        button.accessibilityHint = "Activates the current recipe card"
+        button.tintColor = tintColor
+        button.addTarget(self, action: action, for: .touchUpInside)
+        view.addSubview(button)
+    }
+
+    @objc private func nopeTopCardView() {
+        requestSwipe(.left)
+    }
+
+    @objc private func likeTopCardView() {
+        requestSwipe(.right)
+    }
+
+    private func requestSwipe(_ intent: SwipeIntent) {
+        guard !isSwipeInFlight, let topCardView else { return }
+        pendingProgrammaticIntent = intent
+        updateSwipeButtonsEnabled()
+        topCardView.mdc_swipe(intent == .left ? .left : .right)
+        if !isSwipeInFlight {
+            pendingProgrammaticIntent = nil
+            updateSwipeButtonsEnabled()
+        }
+    }
+
+    private func constructBackground() {
+        emptyImageView.contentMode = .center
+        emptyImageView.alpha = 0.5
+        emptyImageView.isAccessibilityElement = false
+        view.addSubview(emptyImageView)
+
+        emptyLabel.font = .preferredFont(forTextStyle: .headline)
+        emptyLabel.adjustsFontForContentSizeCategory = true
+        emptyLabel.alpha = 0.6
+        emptyLabel.text = "No more recipes"
+        emptyLabel.textAlignment = .center
+        emptyLabel.numberOfLines = 0
+        view.addSubview(emptyLabel)
+    }
+
+    private func createRecipeView(frame: CGRect, recipe: Recipe) -> RecipePickerView {
+        let options = MDCSwipeToChooseViewOptions()
+        options.delegate = self
+        options.threshold = 80
+        options.likedText = "Keep"
+        options.likedColor = .systemBlue
+        options.nopeText = "Delete"
+        options.onPan = { [weak self] state in
+            guard let self, let state, state.view === self.topCardView, !self.isSwipeInFlight else {
                 return
             }
-
-            topCardView = bottomCardView
-            self.updateSwipeButtonsEnabled()
-
-            if(self.recipes.count > 0) {
-                // Create a new bottom card view
-                bottomCardView = createRecipeView(bottomCardViewFrame(), recipe: self.recipes.removeAtIndex(0))
-
-                bottomCardView.alpha = 0.0
-                self.view.insertSubview(bottomCardView, belowSubview: topCardView)
-
-                UIView.animateWithDuration(
-                    0.5,
-                    delay: 0.0,
-                    options: UIViewAnimationOptions.CurveEaseInOut,
-                    animations: {
-                        self.bottomCardView.alpha = 1
-                    },
-                    completion: nil
-                )
-            } else {
-                bottomCardView = UIView(frame: bottomCardViewFrame())
-            }
+            let ratio = CGFloat(max(0, min(1, state.thresholdRatio.isFinite ? state.thresholdRatio : 0)))
+            self.bottomCardView?.frame = self.bottomCardFrame().offsetBy(dx: 0, dy: -ratio * 10)
         }
+        return RecipePickerView(frame: frame, recipe: recipe, options: options)
     }
 
-    func topCardViewFrame() -> CGRect {
-        let hPadding: CGFloat = 40
-        let topPadding:CGFloat = 80
-        let bottomPadding:CGFloat = 270
-
-        return CGRectMake(
-            hPadding,
-            topPadding,
-            CGRectGetWidth(self.view.frame) - (hPadding * 2),
-            CGRectGetHeight(self.view.frame) - bottomPadding
-        )
-    }
-
-    func bottomCardViewFrame() -> CGRect {
-        let topFrame: CGRect = topCardViewFrame()
-
-        return CGRectMake(
-            topFrame.origin.x,
-            topFrame.origin.y + 10,
-            CGRectGetWidth(topFrame),
-            CGRectGetHeight(topFrame)
-        )
-    }
-
-    func buttonY() -> CGFloat {
-        return CGRectGetMaxY(self.bottomCardView.frame) +
-            ((CGRectGetHeight(self.view.bounds) - CGRectGetMaxY(self.bottomCardView.frame) - buttonDiameter) / 2)
-    }
-
-    func updateSwipeButtonsEnabled() {
-        let hasRecipeCard = self.topCardView is RecipePickerView
-        self.nopeButton?.enabled = hasRecipeCard
-        self.likeButton?.enabled = hasRecipeCard
-    }
-
-    func constructNopeButton() {
-        let frame: CGRect = CGRectMake(
-            buttonHPadding,
-            buttonY(),
-            buttonDiameter,
-            buttonDiameter
-        )
-        let button: UIButton = UIButton.buttonWithType(UIButtonType.System) as UIButton
-        button.frame = frame
-
-        button.setImage(UIImage(named: "nope"), forState: UIControlState.Normal)
-        button.accessibilityLabel = "Skip recipe"
-
-        button.tintColor = UIColor(
-            red: 247.0/255.0,
-            green: 91.0/255.0,
-            blue: 37.0/255.0,
-            alpha: 1.0
-        )
-
-        button.addTarget(self, action: "nopeTopCardView", forControlEvents: UIControlEvents.TouchUpInside)
-
-        self.nopeButton = button
-        self.updateSwipeButtonsEnabled()
-        self.view.addSubview(button)
-    }
-
-    func constructLikeButton() {
-        let frame: CGRect = CGRectMake(
-            CGRectGetWidth(self.view.bounds) - buttonDiameter - buttonHPadding,
-            buttonY(),
-            buttonDiameter,
-            buttonDiameter
-        )
-
-        let button: UIButton = UIButton.buttonWithType(UIButtonType.System) as UIButton
-        button.frame = frame
-
-        button.setImage(UIImage(named: "liked"), forState: UIControlState.Normal)
-        button.accessibilityLabel = "Save recipe"
-
-        button.tintColor = UIColor.blueColor()
-
-        button.addTarget(self, action: "likeTopCardView", forControlEvents: UIControlEvents.TouchUpInside)
-
-        self.likeButton = button
-        self.updateSwipeButtonsEnabled()
-        self.view.addSubview(button)
-    }
-
-    func swipeTopCard(direction: MDCSwipeDirection) -> Void {
-        if let recipeView = self.topCardView as? RecipePickerView {
-            recipeView.mdc_swipe(direction)
+    private func layoutDeck() {
+        topCardView?.frame = topCardFrame()
+        if !isSwipeInFlight {
+            bottomCardView?.frame = bottomCardFrame()
         }
-    }
 
-    func nopeTopCardView() {
-        self.swipeTopCard(MDCSwipeDirection.Left)
-    }
-
-    func likeTopCardView() {
-        self.swipeTopCard(MDCSwipeDirection.Right)
-    }
-
-    func constructBackground() {
-        let frownView: UIImageView = UIImageView(image: UIImage(named: "frown"))
-        frownView.contentMode = UIViewContentMode.Center
-        frownView.alpha = 0.5
-        frownView.frame = CGRectMake(
-            CGRectGetMinX(bottomCardView.frame),
-            CGRectGetMinY(bottomCardView.frame),
-            CGRectGetWidth(bottomCardView.frame),
-            CGRectGetHeight(bottomCardView.frame)
+        let buttonY = buttonY()
+        nopeButton.frame = CGRect(
+            x: buttonHorizontalPadding,
+            y: buttonY,
+            width: buttonDiameter,
+            height: buttonDiameter
         )
-
-        let noMoreLabel: UILabel = UILabel(frame: CGRectMake(
-            CGRectGetMinX(frownView.frame),
-            CGRectGetMaxY(frownView.frame),
-            CGRectGetWidth(frownView.frame),
-            18
-            ))
-        noMoreLabel.font = UIFont.systemFontOfSize(20)
-        noMoreLabel.alpha = 0.5
-        noMoreLabel.text = "No more recipes"
-        noMoreLabel.textAlignment = NSTextAlignment.Center
-
-        self.view.insertSubview(frownView, atIndex: 0)
-        self.view.insertSubview(noMoreLabel, atIndex: 0)
+        likeButton.frame = CGRect(
+            x: max(buttonHorizontalPadding, view.bounds.width - buttonDiameter - buttonHorizontalPadding),
+            y: buttonY,
+            width: buttonDiameter,
+            height: buttonDiameter
+        )
+        emptyImageView.frame = bottomCardFrame()
+        emptyLabel.frame = CGRect(
+            x: bottomCardFrame().minX,
+            y: bottomCardFrame().maxY,
+            width: bottomCardFrame().width,
+            height: 60
+        )
+        bringControlsToFront()
     }
 
-    func createRecipeView(frame: CGRect, recipe: Recipe) -> RecipePickerView {
-        var options: MDCSwipeToChooseViewOptions = MDCSwipeToChooseViewOptions()
-        options.delegate = self
-        options.likedText = "Keep"
-        options.likedColor = UIColor.blueColor()
-        options.nopeText = "Delete"
-
-        options.onPan = {(state: MDCPanState!) -> Void in
-            if let panState = state {
-                let frame: CGRect = self.bottomCardViewFrame()
-                self.bottomCardView.frame = CGRectMake(
-                    frame.origin.x,
-                    frame.origin.y - (panState.thresholdRatio * 10.0),
-                    CGRectGetWidth(frame),
-                    CGRectGetHeight(frame)
-                )
-            }
-        };
-
-        var rpw: RecipePickerView = RecipePickerView(frame: frame, recipe: recipe, options: options)
-
-        return rpw
-    }
-
-    override func prepareForSegue(segue: UIStoryboardSegue, sender: AnyObject?) {
-        println("segue")
-        //let controller: LikedLawyersTVC = segue.destinationViewController as LikedLawyersTVC
-        //controller.lawyers = self.savedLawyers
+    private func bringControlsToFront() {
+        view.bringSubviewToFront(nopeButton)
+        view.bringSubviewToFront(likeButton)
     }
 }

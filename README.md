@@ -57,36 +57,21 @@ The setup commands above are derived from repository files. Legacy mobile, Pytho
 
 ## Running or Using the Project
 
-- Open `RecipeSwipe.xcodeproj` in Xcode, choose the app or sample scheme, and run it on the matching simulator/device.
+- Open `RecipeSwipe.xcworkspace` in Xcode, choose the `RecipeSwipe` scheme, and run it on an iOS 12 or newer simulator/device.
 
 ## Testing and Verification
 
-- Xcode's test action or `xcodebuild test` with the appropriate scheme and destination
-- `make check` runs static iOS source checks and uses `xcodebuild` when it is
-  available locally.
-- The static validator also requires a completed canonical plan under
-  `docs/plans` and checks that empty placeholder cards are not swiped by the
-  like/skip buttons. It also guards against adding network recipe-data markers
-  before a data contract exists, keeps the empty-state background sized to the
-  card frame, keeps swipe buttons above background artwork, rejects force-casts
-  in the swipe delegate, and rejects forced `UIImage(named:)`, `Recipe`, and
-  `superview` optional unwraps in Swift source. Every tracked swipe pan callback
-  must also guard its implicitly unwrapped state before reading pan properties;
-  focused mutation tests enforce both callback syntaxes. The validator keeps
-  the image-only like/nope buttons labelled for accessibility,
-  disables them when no recipe card is active, and rejects tracked Xcode
-  user-state files. The recipe name label follows both dimensions of its
-  resizing information strip. Swipe completion accepts only explicit Left or
-  Right directions; `MDCSwipeDirection.None` does not mutate recipes or advance
-  cards.
-- `make structural` runs the static source validator plus dependency-free
-  workflow, swipe-direction, pan-state, and asset file-integrity contract tests.
-- GitHub Actions runs that structural gate on macOS 15 with credential-free
-  checkout, read-only permissions, pinned checkout code, and manual dispatch.
-  It intentionally does not install CocoaPods 0.35 dependencies or build this
-  archived Swift/iOS 8.2 project with a modern Xcode toolchain.
-
-When the required SDK or runtime is unavailable, use static checks and source review first, then verify on a machine that has the matching platform toolchain.
+- `make check` is location-independent and runs the complete maintained gate.
+- The gate runs 4 pure Swift deck/gesture tests, 4 native XCTest cases on an
+  available iPhone simulator, asset integrity checks, 25 hostile state/workflow
+  mutations, and a generic arm64/x86_64 simulator build.
+- The swipe controller binds approval and completion to the active card identity,
+  uses generation tokens for exactly-once deck consumption, validates finite
+  aligned translation/velocity thresholds, and rejects stale pan callbacks.
+- Recipe names are control-character sanitized and bounded; card names use
+  Dynamic Type, two-line resizing, and explicit VoiceOver action descriptions.
+- GitHub Actions runs the same gate on macOS 15 with credential-free checkout,
+  read-only permissions, a pinned checkout action, and manual dispatch.
 
 ## Configuration and Secrets
 
@@ -99,7 +84,7 @@ When the required SDK or runtime is unavailable, use static checks and source re
 
 ## Maintenance Notes
 
-- This looks like an Apple platform project or sample. Xcode, Swift, CocoaPods, and deployment target versions may need to match the original project era.
+- This archived sample is maintained as Swift 5 with an iOS 12 deployment target and its vendored CocoaPods dependency.
 - See `SECURITY.md` for vulnerability reporting and safe research guidance.
 - See `VISION.md` for project direction and contribution guardrails.
 - See `docs/plans/2026-06-08-recipeswipe-baseline.md` for the canonical

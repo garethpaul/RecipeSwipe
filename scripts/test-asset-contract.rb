@@ -45,7 +45,7 @@ class AssetContractTest < Minitest::Test
     makefile = File.read(File.expand_path('../Makefile', __dir__))
 
     assert_includes checker_source, 'AssetContract.validate_reference'
-    assert_equal 2, makefile.scan('ruby scripts/test-asset-contract.rb').length
+    assert_equal 1, makefile.scan('ruby scripts/test-asset-contract.rb').length
   end
 
   def test_rejects_non_basename_and_traversal_filenames
