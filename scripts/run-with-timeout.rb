@@ -26,26 +26,32 @@ rescue Errno::ESRCH
   false
 end
 
-def wait_for_exit(pid, seconds)
+def wait_for_process_group(pid, seconds, status = nil)
   deadline = Process.clock_gettime(Process::CLOCK_MONOTONIC) + seconds
   loop do
-    waited, status = Process.waitpid2(pid, Process::WNOHANG)
-    return status if waited
-    return nil if Process.clock_gettime(Process::CLOCK_MONOTONIC) >= deadline
+    unless status
+      begin
+        waited, status = Process.waitpid2(pid, Process::WNOHANG)
+        status = nil unless waited
+      rescue Errno::ECHILD
+        nil
+      end
+    end
+
+    return [status, true] unless process_group_alive?(pid)
+    return [status, false] if Process.clock_gettime(Process::CLOCK_MONOTONIC) >= deadline
 
     sleep 0.05
   end
-rescue Errno::ECHILD
-  nil
 end
 
-def terminate_process_group(pid, signal, term_grace, kill_grace)
+def terminate_process_group(pid, signal, term_grace, kill_grace, status = nil)
   kill_process_group(pid, signal)
-  status = wait_for_exit(pid, term_grace)
-  return status unless process_group_alive?(pid)
+  status, exited = wait_for_process_group(pid, term_grace, status)
+  return status if exited
 
   kill_process_group(pid, 'KILL')
-  status ||= wait_for_exit(pid, kill_grace)
+  status, = wait_for_process_group(pid, kill_grace, status)
   status
 end
 
@@ -66,6 +72,7 @@ loop do
 end
 
 if status
+  terminate_process_group(child_pid, 'TERM', term_grace, kill_grace, status) if process_group_alive?(child_pid)
   exit(status.exitstatus || (128 + status.termsig))
 end
 

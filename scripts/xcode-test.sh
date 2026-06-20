@@ -5,6 +5,7 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 DERIVED_DATA="$(mktemp -d "${TMPDIR:-/tmp}/RecipeSwipe-DerivedData.XXXXXX")"
 RESULT_DIRECTORY="$(mktemp -d "${TMPDIR:-/tmp}/RecipeSwipe-TestResults.XXXXXX")"
 RESULT_BUNDLE="$RESULT_DIRECTORY/RecipeSwipeTests.xcresult"
+SIMCTL_OUTPUT="$(mktemp "${TMPDIR:-/tmp}/RecipeSwipe-Simctl.XXXXXX")"
 SIMCTL_TIMEOUT="${RECIPESWIPE_SIMCTL_TIMEOUT:-15}"
 XCODEBUILD_TIMEOUT="${RECIPESWIPE_XCODEBUILD_TIMEOUT:-600}"
 XCRUN="${XCRUN:-xcrun}"
@@ -12,7 +13,7 @@ XCODEBUILD="${XCODEBUILD:-xcodebuild}"
 WATCHDOG_PID=""
 
 cleanup() {
-  rm -rf "$DERIVED_DATA" "$RESULT_DIRECTORY"
+  rm -rf "$DERIVED_DATA" "$RESULT_DIRECTORY" "$SIMCTL_OUTPUT"
 }
 
 handle_signal() {
@@ -43,7 +44,8 @@ trap 'handle_signal HUP' HUP
 trap 'handle_signal INT' INT
 trap 'handle_signal TERM' TERM
 
-SIMCTL_JSON="$(ruby --disable-gems "$ROOT/scripts/run-with-timeout.rb" "$SIMCTL_TIMEOUT" "simctl list devices" "$XCRUN" simctl list devices available -j)"
+run_with_timeout "$SIMCTL_TIMEOUT" "simctl list devices" "$XCRUN" simctl list devices available -j > "$SIMCTL_OUTPUT"
+SIMCTL_JSON="$(<"$SIMCTL_OUTPUT")"
 DEVICE_ID="$(printf '%s' "$SIMCTL_JSON" | ruby -rjson -e '
   devices = JSON.parse(STDIN.read).fetch("devices").values.flatten
   phone = devices.find { |device| device["isAvailable"] && device["name"].start_with?("iPhone") }

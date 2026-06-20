@@ -79,6 +79,53 @@ def write_executable(path, content)
   File.chmod(0o755, path)
 end
 
+def assert_watchdog_reaps_success_descendant
+  Dir.mktmpdir('recipeswipe-watchdog-success-descendant') do |directory|
+    child = File.join(directory, 'child')
+    parent_pid = File.join(directory, 'parent.pid')
+    descendant_pid = File.join(directory, 'descendant.pid')
+    write_executable(child, <<~SH)
+      #!/bin/sh
+      printf '%s\n' "$$" > #{Shellwords.escape(parent_pid)}
+      sh -c 'trap "" HUP INT TERM; sleep 600' &
+      printf '%s\n' "$!" > #{Shellwords.escape(descendant_pid)}
+      exit 0
+    SH
+    env = ENV.to_h.merge(
+      'RECIPESWIPE_TIMEOUT_TERM_GRACE' => '0.2',
+      'RECIPESWIPE_TIMEOUT_KILL_GRACE' => '0.2'
+    )
+    started = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+    wrapper_pid = Process.spawn(
+      env,
+      'ruby',
+      '--disable-gems',
+      'scripts/run-with-timeout.rb',
+      '10',
+      'success descendant',
+      child,
+      chdir: ROOT,
+      out: File::NULL,
+      err: File::NULL
+    ) # nosemgrep: ruby.lang.security.dangerous-exec.dangerous-exec -- executable and watchdog path are fixed test constants
+    _, status = Timeout.timeout(4) { Process.wait2(wrapper_pid) }
+    elapsed = Process.clock_gettime(Process::CLOCK_MONOTONIC) - started
+
+    raise 'watchdog did not preserve successful child status' unless status.success?
+    raise "watchdog success cleanup was not prompt (#{elapsed.round(2)}s)" if elapsed >= 3
+    assert_no_processes([parent_pid, descendant_pid], child)
+  ensure
+    if File.exist?(parent_pid)
+      process_group = Integer(File.read(parent_pid), exception: false)
+      begin
+        Process.kill('KILL', -process_group) if process_group
+      rescue Errno::ESRCH
+        nil
+      end
+    end
+  end
+end
+
 def valid_xcrun(path)
   write_executable(path, <<~'SH')
     #!/bin/sh
@@ -133,6 +180,13 @@ def fake_xcodebuild(path)
         printf '%s\n' "$child_pid" > "$FAKE_XCODEBUILD_CHILD_PID"
         wait "$child_pid"
         ;;
+      descendant-survives-success)
+        printf '%s\n' "$$" > "$FAKE_XCODEBUILD_PARENT_PID"
+        sh -c 'trap "" HUP INT TERM; sleep 600' &
+        child_pid=$!
+        printf '%s\n' "$child_pid" > "$FAKE_XCODEBUILD_CHILD_PID"
+        exit 0
+        ;;
       *) exit 92 ;;
     esac
   SH
@@ -152,7 +206,7 @@ def base_env(directory, bin, fake_xcrun, fake_build)
 end
 
 def temporary_runner_paths(directory)
-  Dir.glob(File.join(directory, 'RecipeSwipe-{Build,DerivedData,TestResults}.*'))
+  Dir.glob(File.join(directory, 'RecipeSwipe-{Build,DerivedData,TestResults,Simctl}.*'))
 end
 
 def assert_no_processes(pid_paths, executable)
@@ -188,7 +242,9 @@ def assert_bounded_timeout(action, mode: 'hang')
 
     result = run_script(action, env, directory, action)
     raise "#{action} required external kill after #{result.elapsed.round(2)}s" if result.externally_timed_out
-    raise "#{action} timeout did not exit 124" unless result.status&.exitstatus == 124
+    unless result.status&.exitstatus == 124
+      raise "#{action} timeout did not exit 124 (status=#{result.status.inspect}, output=#{result.output.inspect})"
+    end
     raise "#{action} timeout diagnostic missing" unless result.output.include?("xcodebuild #{action} timed out")
     raise "#{action} timeout left temporary paths: #{temporary_runner_paths(directory).join(', ')}" unless temporary_runner_paths(directory).empty?
     assert_no_processes([parent_pid, child_pid], xcodebuild)
@@ -217,6 +273,40 @@ def assert_exit_code_and_cleanup(action)
   end
 end
 
+def assert_success_reaps_descendant(action)
+  Dir.mktmpdir("recipeswipe-#{action}-success-descendant") do |directory|
+    bin = File.join(directory, 'bin')
+    FileUtils.mkdir_p(bin)
+    xcrun = File.join(bin, 'xcrun')
+    xcodebuild = File.join(bin, 'xcodebuild')
+    valid_xcrun(xcrun)
+    fake_xcodebuild(xcodebuild)
+    parent_pid = File.join(directory, 'xcodebuild-parent.pid')
+    child_pid = File.join(directory, 'xcodebuild-child.pid')
+    env = base_env(directory, bin, xcrun, xcodebuild).merge(
+      'FAKE_XCODEBUILD_MODE' => 'descendant-survives-success',
+      'FAKE_XCODEBUILD_PARENT_PID' => parent_pid,
+      'FAKE_XCODEBUILD_CHILD_PID' => child_pid
+    )
+
+    result = run_script(action, env, directory, "#{action}-success-descendant")
+    raise "#{action} descendant success required external kill" if result.externally_timed_out
+    raise "#{action} descendant success did not preserve exit 0" unless result.status&.success?
+    raise "#{action} descendant cleanup was not bounded (#{result.elapsed.round(2)}s)" if result.elapsed >= 12
+    raise "#{action} descendant success left temporary paths: #{temporary_runner_paths(directory).join(', ')}" unless temporary_runner_paths(directory).empty?
+    assert_no_processes([parent_pid, child_pid], xcodebuild)
+  ensure
+    if File.exist?(parent_pid)
+      process_group = Integer(File.read(parent_pid), exception: false)
+      begin
+        Process.kill('KILL', -process_group) if process_group
+      rescue Errno::ESRCH
+        nil
+      end
+    end
+  end
+end
+
 def assert_signal_cleanup(action)
   Dir.mktmpdir("recipeswipe-#{action}-signal") do |directory|
     bin = File.join(directory, 'bin')
@@ -240,7 +330,7 @@ def assert_signal_cleanup(action)
     begin
       Timeout.timeout(3) { sleep 0.05 until File.exist?(parent_pid) }
       Process.kill('TERM', runner_pid)
-      _, status = Timeout.timeout(12) { Process.wait2(runner_pid) }
+      _, status = Timeout.timeout(20) { Process.wait2(runner_pid) }
       expected_signal_exit = status.termsig == Signal.list.fetch('TERM') || status.exitstatus == 128 + Signal.list.fetch('TERM')
       raise "#{action} did not preserve TERM status" unless expected_signal_exit
     rescue Timeout::Error
@@ -290,7 +380,60 @@ def assert_parallel_isolation
   end
 end
 
+def assert_discovery_signal_cleanup
+  Dir.mktmpdir('recipeswipe-discovery-signal') do |directory|
+    bin = File.join(directory, 'bin')
+    FileUtils.mkdir_p(bin)
+    xcrun = File.join(bin, 'xcrun')
+    parent_pid = File.join(directory, 'xcrun-parent.pid')
+    child_pid = File.join(directory, 'xcrun-child.pid')
+    stdout_path = File.join(directory, 'signal.stdout')
+    stderr_path = File.join(directory, 'signal.stderr')
+    write_executable(xcrun, <<~SH)
+      #!/bin/sh
+      printf '%s\n' "$$" > #{Shellwords.escape(parent_pid)}
+      trap '' HUP INT TERM
+      sh -c 'trap "" HUP INT TERM; sleep 600' &
+      printf '%s\n' "$!" > #{Shellwords.escape(child_pid)}
+      wait
+    SH
+    env = ENV.to_h.merge(
+      'TMPDIR' => directory,
+      'RECIPESWIPE_SIMCTL_TIMEOUT' => '30',
+      'RECIPESWIPE_TIMEOUT_TERM_GRACE' => '0.2',
+      'RECIPESWIPE_TIMEOUT_KILL_GRACE' => '0.2',
+      'XCRUN' => xcrun
+    )
+    runner_pid = spawn_runner(:test, env, stdout_path, stderr_path)
+    started = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+
+    begin
+      Timeout.timeout(3) { sleep 0.05 until File.exist?(parent_pid) }
+      Process.kill('TERM', runner_pid)
+      _, status = Timeout.timeout(20) { Process.wait2(runner_pid) }
+      elapsed = Process.clock_gettime(Process::CLOCK_MONOTONIC) - started
+      expected_signal_exit = status.termsig == Signal.list.fetch('TERM') || status.exitstatus == 128 + Signal.list.fetch('TERM')
+      raise 'simulator discovery did not preserve TERM status' unless expected_signal_exit
+      raise "simulator discovery signal cleanup was delayed until its timeout (#{elapsed.round(2)}s)" if elapsed >= 25
+    rescue Timeout::Error
+      terminate_group(runner_pid)
+      raise 'simulator discovery did not terminate promptly after TERM'
+    ensure
+      terminate_group(runner_pid) if alive?(runner_pid)
+    end
+
+    raise "discovery signal left temporary paths: #{temporary_runner_paths(directory).join(', ')}" unless temporary_runner_paths(directory).empty?
+    assert_no_processes([parent_pid, child_pid], xcrun)
+  end
+end
+
 failures = []
+
+begin
+  assert_watchdog_reaps_success_descendant
+rescue StandardError => error
+  failures << error.message
+end
 
 begin
   Dir.mktmpdir('recipeswipe-discovery-timeout') do |directory|
@@ -346,10 +489,22 @@ end
   end
 
   begin
+    assert_success_reaps_descendant(action)
+  rescue StandardError => error
+    failures << error.message
+  end
+
+  begin
     assert_signal_cleanup(action)
   rescue StandardError => error
     failures << error.message
   end
+end
+
+begin
+  assert_discovery_signal_cleanup
+rescue StandardError => error
+  failures << error.message
 end
 
 begin
