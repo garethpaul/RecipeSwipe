@@ -15,7 +15,7 @@ concurrency:
 
 jobs:
   check:
-    name: Swift, XCTest, build, and policy validation
+    name: Archived iOS structural validation
     runs-on: macos-15
     timeout-minutes: 20
     steps:
