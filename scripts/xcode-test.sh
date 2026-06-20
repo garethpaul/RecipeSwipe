@@ -3,18 +3,39 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 DERIVED_DATA="$(mktemp -d "${TMPDIR:-/tmp}/RecipeSwipe-DerivedData.XXXXXX")"
+RESULT_DIRECTORY="$(mktemp -d "${TMPDIR:-/tmp}/RecipeSwipe-TestResults.XXXXXX")"
+RESULT_BUNDLE="$RESULT_DIRECTORY/RecipeSwipeTests.xcresult"
 SIMCTL_TIMEOUT="${RECIPESWIPE_SIMCTL_TIMEOUT:-15}"
+XCODEBUILD_TIMEOUT="${RECIPESWIPE_XCODEBUILD_TIMEOUT:-600}"
 XCRUN="${XCRUN:-xcrun}"
+XCODEBUILD="${XCODEBUILD:-xcodebuild}"
+WATCHDOG_PID=""
 
 cleanup() {
-  rm -rf "$DERIVED_DATA"
+  rm -rf "$DERIVED_DATA" "$RESULT_DIRECTORY"
 }
 
 handle_signal() {
   local signal="$1"
+  if [[ -n "$WATCHDOG_PID" ]]; then
+    kill "-$signal" "$WATCHDOG_PID" 2>/dev/null || true
+    wait "$WATCHDOG_PID" 2>/dev/null || true
+    WATCHDOG_PID=""
+  fi
   cleanup
   trap - "$signal"
   kill "-$signal" "$$"
+}
+
+run_with_timeout() {
+  ruby --disable-gems "$ROOT/scripts/run-with-timeout.rb" "$@" &
+  WATCHDOG_PID=$!
+  set +e
+  wait "$WATCHDOG_PID"
+  local exit_code=$?
+  set -e
+  WATCHDOG_PID=""
+  return "$exit_code"
 }
 
 trap cleanup EXIT
@@ -30,10 +51,11 @@ DEVICE_ID="$(printf '%s' "$SIMCTL_JSON" | ruby -rjson -e '
   puts phone.fetch("udid")
 ')"
 
-xcodebuild test \
+run_with_timeout "$XCODEBUILD_TIMEOUT" "xcodebuild test" "$XCODEBUILD" test \
   -workspace "$ROOT/RecipeSwipe.xcworkspace" \
   -scheme RecipeSwipe \
   -destination "platform=iOS Simulator,id=$DEVICE_ID" \
   -derivedDataPath "$DERIVED_DATA" \
+  -resultBundlePath "$RESULT_BUNDLE" \
   CODE_SIGNING_ALLOWED=NO \
   IPHONEOS_DEPLOYMENT_TARGET=12.0

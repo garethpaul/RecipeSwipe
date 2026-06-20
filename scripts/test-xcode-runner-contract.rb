@@ -7,7 +7,7 @@ require 'tmpdir'
 require 'timeout'
 
 ROOT = File.expand_path('..', __dir__)
-SCRIPT = File.join(ROOT, 'scripts/xcode-test.sh')
+RunResult = Struct.new(:status, :elapsed, :output, :externally_timed_out, keyword_init: true)
 
 def alive?(pid)
   Process.kill(0, pid)
@@ -26,94 +26,338 @@ ensure
   rescue Errno::ECHILD
     nil
   rescue Timeout::Error
-    begin
-      Process.kill('KILL', -pid)
-    rescue Errno::ESRCH
-      nil
-    end
-    begin
-      Process.wait(pid)
-    rescue Errno::ECHILD
-      nil
-    end
+    nil
+  end
+  begin
+    Process.kill('KILL', -pid)
+  rescue Errno::ESRCH
+    nil
+  end
+  begin
+    Process.wait(pid)
+  rescue Errno::ECHILD
+    nil
   end
 end
 
-def run_script_with_guard(env, stdout_path, stderr_path)
-  pid = Process.spawn(
-    env,
-    'bash',
-    SCRIPT,
-    out: stdout_path,
-    err: stderr_path,
-    pgroup: true
-  )
-
-  status = nil
-  Timeout.timeout(8) do
-    _, status = Process.wait2(pid)
+def spawn_runner(action, env, stdout_path, stderr_path)
+  case action
+  when :build
+    Process.spawn(env, 'bash', 'scripts/xcode-build.sh', chdir: ROOT, out: stdout_path, err: stderr_path, pgroup: true) # nosemgrep: ruby.lang.security.dangerous-exec.dangerous-exec -- executable and script are fixed test constants
+  when :test
+    Process.spawn(env, 'bash', 'scripts/xcode-test.sh', chdir: ROOT, out: stdout_path, err: stderr_path, pgroup: true) # nosemgrep: ruby.lang.security.dangerous-exec.dangerous-exec -- executable and script are fixed test constants
+  else
+    raise "unknown runner action: #{action}"
   end
-  status
-rescue Timeout::Error
-  terminate_group(pid) if pid
-  abort('xcode-test.sh did not bound wedged simctl list devices discovery')
 end
 
-Dir.mktmpdir('recipeswipe-runner-contract') do |directory|
-  bin = File.join(directory, 'bin')
-  FileUtils.mkdir_p(bin)
-  fake_xcrun = File.join(bin, 'xcrun')
-  parent_pid = File.join(directory, 'xcrun-parent.pid')
-  child_pid = File.join(directory, 'xcrun-child.pid')
-  stdout_path = File.join(directory, 'stdout')
-  stderr_path = File.join(directory, 'stderr')
-
-  fake_xcrun_source = <<~'SH'
-    #!/bin/sh
-    echo "$$" > __PARENT_PID__
-    trap '' TERM
-    sleep 600 &
-    echo "$!" > __CHILD_PID__
-    wait
-  SH
-  fake_xcrun_source = fake_xcrun_source
-    .sub('__PARENT_PID__', Shellwords.escape(parent_pid))
-    .sub('__CHILD_PID__', Shellwords.escape(child_pid))
-  File.write(fake_xcrun, fake_xcrun_source)
-  File.chmod(0o755, fake_xcrun)
-
-  env = ENV.to_h.merge(
-    'TMPDIR' => directory,
-    'RECIPESWIPE_SIMCTL_TIMEOUT' => '2',
-    'XCRUN' => fake_xcrun
-  )
-
+def run_script(action, env, directory, label, guard_seconds: 8)
+  stdout_path = File.join(directory, "#{label}.stdout")
+  stderr_path = File.join(directory, "#{label}.stderr")
   started = Process.clock_gettime(Process::CLOCK_MONOTONIC)
-  status = run_script_with_guard(env, stdout_path, stderr_path)
-  elapsed = Process.clock_gettime(Process::CLOCK_MONOTONIC) - started
-  output = [File.read(stdout_path), File.read(stderr_path)].join
+  pid = spawn_runner(action, env, stdout_path, stderr_path)
+  status = nil
+  externally_timed_out = false
 
-  abort('expected wedged simulator discovery to exit nonzero') if status.success?
-  abort("expected bounded simulator discovery, took #{elapsed.round(2)}s") if elapsed >= 7
-  abort('expected timeout diagnostic for simulator discovery') unless output.include?('simctl list devices timed out')
+  begin
+    Timeout.timeout(guard_seconds) { _, status = Process.wait2(pid) }
+  rescue Timeout::Error
+    externally_timed_out = true
+    terminate_group(pid)
+  end
 
+  RunResult.new(
+    status: status,
+    elapsed: Process.clock_gettime(Process::CLOCK_MONOTONIC) - started,
+    output: [File.read(stdout_path), File.read(stderr_path)].join,
+    externally_timed_out: externally_timed_out
+  )
+end
+
+def write_executable(path, content)
+  File.write(path, content)
+  File.chmod(0o755, path)
+end
+
+def valid_xcrun(path)
+  write_executable(path, <<~'SH')
+    #!/bin/sh
+    printf '%s\n' '{"devices":{"com.apple.CoreSimulator.SimRuntime.iOS-26-0":[{"isAvailable":true,"name":"iPhone Contract","udid":"FAKE-UDID"}]}}'
+  SH
+end
+
+def fake_xcodebuild(path)
+  write_executable(path, <<~'SH')
+    #!/bin/sh
+    set -eu
+
+    action="${1:-missing}"
+    derived_data=""
+    result_bundle=""
+    previous=""
+    for argument in "$@"; do
+      case "$previous" in
+        -derivedDataPath) derived_data="$argument" ;;
+        -resultBundlePath) result_bundle="$argument" ;;
+      esac
+      previous="$argument"
+    done
+
+    [ -n "$derived_data" ] || exit 90
+    mkdir -p "$derived_data"
+    printf 'derived data fixture\n' > "$derived_data/fixture"
+    if [ "$action" = test ] && [ -n "$result_bundle" ]; then
+      mkdir -p "$result_bundle"
+      printf 'result fixture\n' > "$result_bundle/fixture"
+    fi
+
+    if [ -n "${FAKE_RECORD_DIR:-}" ]; then
+      printf '%s\t%s\t%s\n' "$action" "$derived_data" "$result_bundle" > "$FAKE_RECORD_DIR/$$.record"
+    fi
+
+    case "${FAKE_XCODEBUILD_MODE:-success}" in
+      success) exit 0 ;;
+      exit) exit "${FAKE_XCODEBUILD_EXIT_CODE:-37}" ;;
+      hang)
+        printf '%s\n' "$$" > "$FAKE_XCODEBUILD_PARENT_PID"
+        trap '' HUP INT TERM
+        sh -c 'trap "" HUP INT TERM; sleep 600' &
+        child_pid=$!
+        printf '%s\n' "$child_pid" > "$FAKE_XCODEBUILD_CHILD_PID"
+        wait "$child_pid"
+        ;;
+      hang-parent-exits)
+        printf '%s\n' "$$" > "$FAKE_XCODEBUILD_PARENT_PID"
+        sh -c 'trap "" HUP INT TERM; sleep 600' &
+        child_pid=$!
+        printf '%s\n' "$child_pid" > "$FAKE_XCODEBUILD_CHILD_PID"
+        wait "$child_pid"
+        ;;
+      *) exit 92 ;;
+    esac
+  SH
+end
+
+def base_env(directory, bin, fake_xcrun, fake_build)
+  ENV.to_h.merge(
+    'TMPDIR' => directory,
+    'PATH' => "#{bin}:#{ENV.fetch('PATH')}",
+    'XCRUN' => fake_xcrun,
+    'XCODEBUILD' => fake_build,
+    'RECIPESWIPE_SIMCTL_TIMEOUT' => '4',
+    'RECIPESWIPE_XCODEBUILD_TIMEOUT' => '4',
+    'RECIPESWIPE_TIMEOUT_TERM_GRACE' => '0.2',
+    'RECIPESWIPE_TIMEOUT_KILL_GRACE' => '0.2'
+  )
+end
+
+def temporary_runner_paths(directory)
+  Dir.glob(File.join(directory, 'RecipeSwipe-{Build,DerivedData,TestResults}.*'))
+end
+
+def assert_no_processes(pid_paths, executable)
   sleep 0.2
-  recorded_pids = [parent_pid, child_pid].each_with_object([]) do |path, pids|
+  pid_paths.each do |path|
     next unless File.exist?(path)
 
     pid = Integer(File.read(path), exception: false)
-    abort("invalid pid recorded in #{path}") unless pid
-    pids << pid
-  end
-  recorded_pids.each do |pid|
-    abort("orphaned fake xcrun process #{pid}") if alive?(pid)
+    raise "invalid pid recorded in #{path}" unless pid
+    raise "orphaned process #{pid} from #{executable}" if alive?(pid)
   end
 
-  fake_path_pattern = Regexp.escape(fake_xcrun)
-  surviving_fake_processes = `ps -axo pid=,command=`.lines.select do |line|
-    line.match?(fake_path_pattern) && !line.include?('ps -axo')
-  end
-  abort("orphaned fake xcrun command: #{surviving_fake_processes.join}") unless surviving_fake_processes.empty?
+  pattern = Regexp.escape(executable)
+  survivors = `ps -axo pid=,command=`.lines.select { |line| line.match?(pattern) }
+  raise "orphaned command: #{survivors.join}" unless survivors.empty?
 end
+
+def assert_bounded_timeout(action, mode: 'hang')
+  Dir.mktmpdir("recipeswipe-#{action}-timeout") do |directory|
+    bin = File.join(directory, 'bin')
+    FileUtils.mkdir_p(bin)
+    xcrun = File.join(bin, 'xcrun')
+    xcodebuild = File.join(bin, 'xcodebuild')
+    valid_xcrun(xcrun)
+    fake_xcodebuild(xcodebuild)
+    parent_pid = File.join(directory, 'xcodebuild-parent.pid')
+    child_pid = File.join(directory, 'xcodebuild-child.pid')
+    env = base_env(directory, bin, xcrun, xcodebuild).merge(
+      'FAKE_XCODEBUILD_MODE' => mode,
+      'FAKE_XCODEBUILD_PARENT_PID' => parent_pid,
+      'FAKE_XCODEBUILD_CHILD_PID' => child_pid
+    )
+
+    result = run_script(action, env, directory, action)
+    raise "#{action} required external kill after #{result.elapsed.round(2)}s" if result.externally_timed_out
+    raise "#{action} timeout did not exit 124" unless result.status&.exitstatus == 124
+    raise "#{action} timeout diagnostic missing" unless result.output.include?("xcodebuild #{action} timed out")
+    raise "#{action} timeout left temporary paths: #{temporary_runner_paths(directory).join(', ')}" unless temporary_runner_paths(directory).empty?
+    assert_no_processes([parent_pid, child_pid], xcodebuild)
+  end
+end
+
+def assert_exit_code_and_cleanup(action)
+  Dir.mktmpdir("recipeswipe-#{action}-exit") do |directory|
+    bin = File.join(directory, 'bin')
+    FileUtils.mkdir_p(bin)
+    xcrun = File.join(bin, 'xcrun')
+    xcodebuild = File.join(bin, 'xcodebuild')
+    valid_xcrun(xcrun)
+    fake_xcodebuild(xcodebuild)
+    env = base_env(directory, bin, xcrun, xcodebuild).merge(
+      'FAKE_XCODEBUILD_MODE' => 'exit',
+      'FAKE_XCODEBUILD_EXIT_CODE' => '37'
+    )
+
+    result = run_script(action, env, directory, "#{action}-exit")
+    raise "#{action} exit probe required external kill" if result.externally_timed_out
+    unless result.status&.exitstatus == 37
+      raise "#{action} did not propagate exit 37 (status=#{result.status.inspect}, output=#{result.output.inspect})"
+    end
+    raise "#{action} failure left temporary paths: #{temporary_runner_paths(directory).join(', ')}" unless temporary_runner_paths(directory).empty?
+  end
+end
+
+def assert_signal_cleanup(action)
+  Dir.mktmpdir("recipeswipe-#{action}-signal") do |directory|
+    bin = File.join(directory, 'bin')
+    FileUtils.mkdir_p(bin)
+    xcrun = File.join(bin, 'xcrun')
+    xcodebuild = File.join(bin, 'xcodebuild')
+    valid_xcrun(xcrun)
+    fake_xcodebuild(xcodebuild)
+    parent_pid = File.join(directory, 'xcodebuild-parent.pid')
+    child_pid = File.join(directory, 'xcodebuild-child.pid')
+    stdout_path = File.join(directory, 'signal.stdout')
+    stderr_path = File.join(directory, 'signal.stderr')
+    env = base_env(directory, bin, xcrun, xcodebuild).merge(
+      'RECIPESWIPE_XCODEBUILD_TIMEOUT' => '30',
+      'FAKE_XCODEBUILD_MODE' => 'hang',
+      'FAKE_XCODEBUILD_PARENT_PID' => parent_pid,
+      'FAKE_XCODEBUILD_CHILD_PID' => child_pid
+    )
+    runner_pid = spawn_runner(action, env, stdout_path, stderr_path)
+
+    begin
+      Timeout.timeout(3) { sleep 0.05 until File.exist?(parent_pid) }
+      Process.kill('TERM', runner_pid)
+      _, status = Timeout.timeout(12) { Process.wait2(runner_pid) }
+      expected_signal_exit = status.termsig == Signal.list.fetch('TERM') || status.exitstatus == 128 + Signal.list.fetch('TERM')
+      raise "#{action} did not preserve TERM status" unless expected_signal_exit
+    rescue Timeout::Error
+      terminate_group(runner_pid)
+      output = [File.read(stdout_path), File.read(stderr_path)].join
+      raise "#{action} did not terminate after TERM (output=#{output.inspect})"
+    ensure
+      terminate_group(runner_pid) if alive?(runner_pid)
+    end
+
+    raise "#{action} signal left temporary paths: #{temporary_runner_paths(directory).join(', ')}" unless temporary_runner_paths(directory).empty?
+    assert_no_processes([parent_pid, child_pid], xcodebuild)
+  end
+end
+
+def assert_parallel_isolation
+  Dir.mktmpdir('recipeswipe-parallel-isolation') do |directory|
+    bin = File.join(directory, 'bin')
+    records = File.join(directory, 'records')
+    FileUtils.mkdir_p([bin, records])
+    xcrun = File.join(bin, 'xcrun')
+    xcodebuild = File.join(bin, 'xcodebuild')
+    valid_xcrun(xcrun)
+    fake_xcodebuild(xcodebuild)
+    env = base_env(directory, bin, xcrun, xcodebuild).merge(
+      'FAKE_XCODEBUILD_MODE' => 'success',
+      'FAKE_RECORD_DIR' => records
+    )
+
+    runs = %i[build build test test].each_with_index.map do |action, index|
+      Thread.new { run_script(action, env, directory, "parallel-#{index}") }
+    end.map(&:value)
+
+    raise 'parallel runner required external kill' if runs.any?(&:externally_timed_out)
+    unless runs.all? { |run| run.status&.success? }
+      details = runs.map { |run| "status=#{run.status.inspect} output=#{run.output.inspect}" }.join('; ')
+      raise "parallel runner returned nonzero: #{details}"
+    end
+
+    entries = Dir.glob(File.join(records, '*.record')).map { |path| File.read(path).chomp.split("\t", -1) }
+    raise "expected 4 parallel records, got #{entries.length}" unless entries.length == 4
+    derived_paths = entries.map { |entry| entry.fetch(1) }
+    raise 'parallel DerivedData paths were not unique' unless derived_paths.uniq.length == 4
+    test_bundles = entries.select { |entry| entry.fetch(0) == 'test' }.map { |entry| entry.fetch(2) }
+    raise 'test result bundle paths were missing or shared' unless test_bundles.length == 2 && test_bundles.all? { |path| !path.empty? } && test_bundles.uniq.length == 2
+    raise "parallel success left temporary paths: #{temporary_runner_paths(directory).join(', ')}" unless temporary_runner_paths(directory).empty?
+  end
+end
+
+failures = []
+
+begin
+  Dir.mktmpdir('recipeswipe-discovery-timeout') do |directory|
+    bin = File.join(directory, 'bin')
+    FileUtils.mkdir_p(bin)
+    xcrun = File.join(bin, 'xcrun')
+    parent_pid = File.join(directory, 'xcrun-parent.pid')
+    child_pid = File.join(directory, 'xcrun-child.pid')
+    write_executable(xcrun, <<~SH)
+      #!/bin/sh
+      printf '%s\n' "$$" > #{Shellwords.escape(parent_pid)}
+      trap '' HUP INT TERM
+      sh -c 'trap "" HUP INT TERM; sleep 600' &
+      printf '%s\n' "$!" > #{Shellwords.escape(child_pid)}
+      wait
+    SH
+    env = ENV.to_h.merge(
+      'TMPDIR' => directory,
+      'RECIPESWIPE_SIMCTL_TIMEOUT' => '2',
+      'RECIPESWIPE_TIMEOUT_TERM_GRACE' => '0.2',
+      'RECIPESWIPE_TIMEOUT_KILL_GRACE' => '0.2',
+      'XCRUN' => xcrun
+    )
+
+    result = run_script(:test, env, directory, 'discovery')
+    raise 'simulator discovery required external kill' if result.externally_timed_out
+    raise 'simulator discovery timeout did not exit 124' unless result.status&.exitstatus == 124
+    raise 'simulator discovery timeout diagnostic missing' unless result.output.include?('simctl list devices timed out')
+    raise "discovery timeout left temporary paths: #{temporary_runner_paths(directory).join(', ')}" unless temporary_runner_paths(directory).empty?
+    assert_no_processes([parent_pid, child_pid], xcrun)
+  end
+rescue StandardError => error
+  failures << error.message
+end
+
+%i[build test].each do |action|
+  begin
+    assert_bounded_timeout(action)
+  rescue StandardError => error
+    failures << error.message
+  end
+
+  begin
+    assert_bounded_timeout(action, mode: 'hang-parent-exits')
+  rescue StandardError => error
+    failures << "#{action} parent-exit cleanup: #{error.message}"
+  end
+
+  begin
+    assert_exit_code_and_cleanup(action)
+  rescue StandardError => error
+    failures << error.message
+  end
+
+  begin
+    assert_signal_cleanup(action)
+  rescue StandardError => error
+    failures << error.message
+  end
+end
+
+begin
+  assert_parallel_isolation
+rescue StandardError => error
+  failures << error.message
+end
+
+abort(failures.join("\n")) unless failures.empty?
 
 puts 'xcode runner contract tests passed'
