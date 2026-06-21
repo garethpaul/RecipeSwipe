@@ -8,6 +8,12 @@ require 'tmpdir'
 require 'timeout'
 
 ROOT = File.expand_path('..', __dir__)
+
+def assert_default_time_bounds
+  test_runner = File.read(File.join(ROOT, 'scripts/xcode-test.sh'))
+  expected = 'SIMCTL_TIMEOUT="${RECIPESWIPE_SIMCTL_TIMEOUT:-60}"'
+  raise 'simulator discovery default must remain bounded at 60 seconds' unless test_runner.include?(expected)
+end
 RunResult = Struct.new(:status, :elapsed, :output, :externally_timed_out, keyword_init: true)
 
 def alive?(pid)
@@ -512,6 +518,12 @@ def assert_discovery_signal_cleanup
 end
 
 failures = []
+
+begin
+  assert_default_time_bounds
+rescue StandardError => error
+  failures << error.message
+end
 
 begin
   assert_watchdog_reaps_success_descendant
