@@ -12,12 +12,20 @@ asset_root = Pathname.new(root).join('RecipeSwipe/Images.xcassets')
 makefile = File.read(File.join(root, 'Makefile'))
 
 [
+  'override SHELL := /bin/sh',
+  'override .SHELLFLAGS := -c',
+  'ifneq ($(strip $(MAKEFILES)),)',
+  '$(error MAKEFILES must be empty; repository verification requires this Makefile to be loaded alone)',
   'ifneq ($(origin MAKEFILE_LIST),file)',
   '$(error MAKEFILE_LIST must not be overridden)',
   'override REPO_ROOT := $(shell path=',
-  '/bin/sed',
+  '/usr/bin/sed',
+  '[ -f "$$path" ] || exit 1',
   '/usr/bin/dirname',
   '/bin/pwd -P',
+  'export REPO_ROOT',
+  '$(error repository Makefile path could not be resolved)',
+  'cd "$$REPO_ROOT"',
   'root-test:',
   'scripts/test-makefile-root.sh',
   'verify: structural test build root-test'
@@ -26,12 +34,12 @@ makefile = File.read(File.join(root, 'Makefile'))
 end
 
 root_test = File.read(File.join(root, 'scripts/test-makefile-root.sh'))
-['RecipeSwipe', '24 target/override cases', '2 MAKEFILE_LIST rejection cases', 'MAKEFILE_LIST must not be overridden'].each do |contract|
+['RecipeSwipe', '56 executed target/authority cases', '2 MAKEFILE_LIST rejections', '1 MAKEFILES rejection', '1 multi-Makefile rejection', 'MAKEFILE_LIST must not be overridden'].each do |contract|
   failures << "Makefile root test must preserve #{contract}" unless root_test.include?(contract)
 end
 
 root_plan = File.read(File.join(root, 'docs/plans/2026-06-21-safe-make-root.md'))
-['## Status: Completed', 'seven pre-existing public Make targets plus the root regression gate', '24 target and `REPO_ROOT` override cases', 'Command-line and environment `MAKEFILE_LIST` overrides failed closed'].each do |evidence|
+['## Status: Completed', 'seven pre-existing public Make targets plus the root regression gate', '56 executed target, root, shell, and shell-flag authority cases', 'Both `MAKEFILE_LIST` override channels', '`MAKEFILES` preload', 'ambiguous multiple-Makefile invocation failed closed'].each do |evidence|
   failures << "safe Make root plan must preserve #{evidence}" unless root_plan.include?(evidence)
 end
 

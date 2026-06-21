@@ -2,8 +2,9 @@
 
 ## 2026-06-21
 
-- Hardened all seven pre-existing Make gates against `MAKEFILE_LIST` and
-  `REPO_ROOT` redirection without changing app or swipe behavior.
+- Hardened all seven pre-existing Make gates against caller-controlled root and
+  shell authority, preloaded Makefiles, ambiguous Makefile lists, and
+  shell-sensitive checkout paths without changing app or swipe behavior.
 
 ## 2026-06-19
 
