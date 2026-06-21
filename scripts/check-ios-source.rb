@@ -29,24 +29,25 @@ makefile = File.read(File.join(root, 'Makefile'))
   '/bin/pwd -P',
   'export REPO_ROOT',
   '$(error repository Makefile path could not be resolved)',
-  'build check core-test lint root-test structural test verify: __repository-make-authority',
+  'PUBLIC_TARGETS := build check core-test lint root-test structural test verify',
+  '$(PUBLIC_TARGETS):: __repository-make-authority',
   '__repository-make-authority::',
   'additional Makefiles are not supported for repository verification',
   'cd "$$REPO_ROOT"',
-  'root-test:',
+  'root-test::',
   'scripts/test-makefile-root.sh',
-  'verify: structural test build root-test'
+  'verify:: structural test build root-test'
 ].each do |contract|
   failures << "Makefile must preserve #{contract}" unless makefile.include?(contract)
 end
 
 root_test = File.read(File.join(root, 'scripts/test-makefile-root.sh'))
-['RecipeSwipe', '56 executed target/authority cases', '2 MAKEFILE_LIST rejections', '1 MAKEFILES rejection', '2 multi-Makefile rejections', '5 MAKEFLAGS rejections', '1 dollar-path fail-closed case', 'MAKEFILE_LIST must not be overridden'].each do |contract|
+['RecipeSwipe', '56 executed target/authority cases', '2 MAKEFILE_LIST rejections', '1 MAKEFILES rejection', '3 multi-Makefile rejections including the combined eight-recipe bypass', '5 MAKEFLAGS rejections', '1 dollar-path fail-closed case', 'documented override/double-colon caller boundaries', 'MAKEFILE_LIST must not be overridden'].each do |contract|
   failures << "Makefile root test must preserve #{contract}" unless root_test.include?(contract)
 end
 
 root_plan = File.read(File.join(root, 'docs/plans/2026-06-21-safe-make-root.md'))
-['## Status: Completed', 'seven pre-existing public Make targets plus the root regression gate', '56 executed target, root, shell, and shell-flag authority cases', 'Both `MAKEFILE_LIST` override channels', '`MAKEFILES` preload', 'earlier and later additional Makefiles', '`-t`, `-q`, and `-i` Make modes', 'literal `$()` checkout path failed closed', "responsibility\n  of the trusted caller's `PATH`"].each do |evidence|
+['## Status: Completed', 'seven pre-existing public Make targets plus the root regression gate', '56 executed target, root, shell, and shell-flag authority cases', 'Both `MAKEFILE_LIST` override channels', '`MAKEFILES` preload', 'combined eight-recipe bypass', '`-t`, `-q`, and `-i` Make modes', 'literal `$()` checkout path failed closed', 'GNU Make `override` directives', 'caller-added double-colon recipes', 'startup parse-time code', "responsibility\n  of the trusted caller's `PATH`"].each do |evidence|
   failures << "safe Make root plan must preserve #{evidence}" unless root_plan.include?(evidence)
 end
 

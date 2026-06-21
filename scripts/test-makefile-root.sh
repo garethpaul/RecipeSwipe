@@ -1,7 +1,7 @@
 #!/usr/bin/env sh
 set -eu
 
-ROOT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+ROOT_DIR=$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)
 ATTACKER_ROOT=/tmp/recipeswipe-attacker-root
 TEMP_ROOT=$(mktemp -d "${TMPDIR:-/tmp}/recipeswipe-root-control-XXXXXX")
 trap 'rm -rf "$TEMP_ROOT"' EXIT HUP INT TERM
@@ -13,7 +13,7 @@ COMMAND_LOG="$TEMP_ROOT/commands.log"
 FAKE_SHELL_LOG="$TEMP_ROOT/fake-shell.log"
 SHADOWED_TOOL_LOG="$TEMP_ROOT/shadowed-tool.log"
 mkdir "$CONTROL_DIR" "$CHECKOUT" "$CHECKOUT/scripts" "$CHECKOUT/bin"
-CHECKOUT=$(CDPATH= cd -- "$CHECKOUT" && pwd -P)
+CHECKOUT=$(CDPATH='' cd -- "$CHECKOUT" && pwd -P)
 MAKEFILE="$CHECKOUT/Makefile"
 cp "$ROOT_DIR/Makefile" "$MAKEFILE"
 
@@ -186,11 +186,29 @@ if (cd "$CONTROL_DIR" && PATH="$CHECKOUT/bin:$PATH" RECIPESWIPE_COMMAND_LOG="$CO
   printf '%s\n' "later multiple -f Makefile unexpectedly passed" >&2
   exit 1
 fi
-assert_output_contains "additional Makefiles are not supported" "$TEMP_ROOT/later.out" "later multiple -f Makefile"
+assert_output_contains "has both : and :: entries" "$TEMP_ROOT/later.out" "later multiple -f Makefile"
 if [ -e "$LATER_MARKER" ] || [ -e "$COMMAND_LOG" ]; then
   printf '%s\n' "later multiple -f Makefile reached a quality command" >&2
   exit 1
 fi
+
+COMBINED_MAKEFILE="$TEMP_ROOT/combined-later.mk"
+COMBINED_MARKER="$TEMP_ROOT/combined-later-marker"
+cat >"$COMBINED_MAKEFILE" <<EOF
+override REPOSITORY_MAKEFILE := \$(value MAKEFILE_LIST)
+build check core-test lint root-test structural test verify:
+	@printf '%s\n' '\$@' >> '$COMBINED_MARKER'
+EOF
+rm -f "$COMMAND_LOG" "$COMBINED_MARKER"
+if (cd "$CONTROL_DIR" && PATH="$CHECKOUT/bin:$PATH" RECIPESWIPE_COMMAND_LOG="$COMMAND_LOG" make --no-print-directory --file "$MAKEFILE" --file "$COMBINED_MAKEFILE" check) >"$TEMP_ROOT/combined-later.out" 2>&1; then
+  printf '%s\n' "combined later Makefile authority bypass unexpectedly passed" >&2
+  exit 1
+fi
+if [ -e "$COMBINED_MARKER" ] || [ -e "$COMMAND_LOG" ]; then
+  printf '%s\n' "combined later Makefile authority bypass reached a quality command" >&2
+  exit 1
+fi
+assert_output_contains "has both : and :: entries" "$TEMP_ROOT/combined-later.out" "combined later Makefile authority bypass"
 
 DOLLAR_CHECKOUT="$TEMP_ROOT/RecipeSwipe \$(touch RECIPESWIPE_DOLLAR_MARKER)"
 mkdir "$DOLLAR_CHECKOUT"
@@ -233,4 +251,10 @@ if [ -e "$COMMAND_LOG" ]; then
   exit 1
 fi
 
-printf '%s\n' "Makefile root tests passed: 56 executed target/authority cases, 2 MAKEFILE_LIST rejections, 1 MAKEFILES rejection, 2 multi-Makefile rejections, 5 MAKEFLAGS rejections, and 1 dollar-path fail-closed case"
+BOUNDARY_TEXT="GNU Make \`override\` directives"
+grep -Fq "$BOUNDARY_TEXT" "$ROOT_DIR/README.md"
+grep -Fq 'caller-added double-colon recipes' "$ROOT_DIR/README.md"
+grep -Fq "$BOUNDARY_TEXT" "$ROOT_DIR/docs/plans/2026-06-21-safe-make-root.md"
+grep -Fq 'caller-added double-colon recipes' "$ROOT_DIR/docs/plans/2026-06-21-safe-make-root.md"
+
+printf '%s\n' "Makefile root tests passed: 56 executed target/authority cases, 2 MAKEFILE_LIST rejections, 1 MAKEFILES rejection, 3 multi-Makefile rejections including the combined eight-recipe bypass, 5 MAKEFLAGS rejections, 1 dollar-path fail-closed case, and documented override/double-colon caller boundaries"

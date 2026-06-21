@@ -1,5 +1,7 @@
 .PHONY: __repository-make-authority build check core-test lint root-test structural test verify
 
+PUBLIC_TARGETS := build check core-test lint root-test structural test verify
+
 override SHELL := /bin/sh
 override .SHELLFLAGS := -c
 ifneq ($(filter command line,$(origin MAKEFLAGS)),)
@@ -36,32 +38,32 @@ ifeq ($(strip $(REPO_ROOT)),)
 $(error repository Makefile path could not be resolved)
 endif
 
-build check core-test lint root-test structural test verify: __repository-make-authority
+$(PUBLIC_TARGETS):: __repository-make-authority
 
 __repository-make-authority::
 	@expected='$(subst ','"'"',$(value REPOSITORY_MAKEFILE))'; actual='$(subst ','"'"',$(value MAKEFILE_LIST))'; [ "$$actual" = "$$expected" ] || { printf '%s\n' 'additional Makefiles are not supported for repository verification' >&2; exit 2; }
 
-lint:
+lint::
 	cd "$$REPO_ROOT" && ruby scripts/check-ios-source.rb
 
-structural: lint
+structural:: lint
 	cd "$$REPO_ROOT" && ruby scripts/test-asset-contract.rb
 	cd "$$REPO_ROOT" && ruby scripts/test-swipe-state-contract.rb
 	cd "$$REPO_ROOT" && ruby scripts/test-xcode-runner-contract.rb
 	cd "$$REPO_ROOT" && ruby scripts/test-workflow-contract.rb
 
-core-test:
+core-test::
 	cd "$$REPO_ROOT" && scripts/swift-test.sh
 
-test: core-test
+test:: core-test
 	cd "$$REPO_ROOT" && scripts/xcode-test.sh
 
-build:
+build::
 	cd "$$REPO_ROOT" && scripts/xcode-build.sh
 
-root-test:
+root-test::
 	cd "$$REPO_ROOT" && scripts/test-makefile-root.sh
 
-verify: structural test build root-test
+verify:: structural test build root-test
 
-check: verify
+check:: verify
