@@ -1,7 +1,11 @@
 .PHONY: __repository-make-authority build check core-test lint root-test structural test verify
 
+PUBLIC_TARGETS := build check core-test lint root-test structural test verify
+
 override SHELL := /bin/sh
 override .SHELLFLAGS := -c
+$(PUBLIC_TARGETS) __repository-make-authority: override SHELL := /bin/sh
+$(PUBLIC_TARGETS) __repository-make-authority: override .SHELLFLAGS := -c
 ifneq ($(filter command line,$(origin MAKEFLAGS)),)
 $(error MAKEFLAGS must not be overridden for repository verification)
 endif
@@ -35,33 +39,35 @@ export REPO_ROOT
 ifeq ($(strip $(REPO_ROOT)),)
 $(error repository Makefile path could not be resolved)
 endif
+override REPOSITORY_SHELL_LITERAL = $(subst $$,$$$$,$(subst ','"'"',$1))
+override REPOSITORY_ROOT_LITERAL := $(call REPOSITORY_SHELL_LITERAL,$(REPO_ROOT))
 
-build check core-test lint root-test structural test verify: __repository-make-authority
+$(PUBLIC_TARGETS):: __repository-make-authority
 
 __repository-make-authority::
 	@expected='$(subst ','"'"',$(value REPOSITORY_MAKEFILE))'; actual='$(subst ','"'"',$(value MAKEFILE_LIST))'; [ "$$actual" = "$$expected" ] || { printf '%s\n' 'additional Makefiles are not supported for repository verification' >&2; exit 2; }
 
-lint:
-	cd "$$REPO_ROOT" && ruby scripts/check-ios-source.rb
+lint::
+	cd '$(REPOSITORY_ROOT_LITERAL)' && ruby scripts/check-ios-source.rb
 
-structural: lint
-	cd "$$REPO_ROOT" && ruby scripts/test-asset-contract.rb
-	cd "$$REPO_ROOT" && ruby scripts/test-swipe-state-contract.rb
-	cd "$$REPO_ROOT" && ruby scripts/test-xcode-runner-contract.rb
-	cd "$$REPO_ROOT" && ruby scripts/test-workflow-contract.rb
+structural:: lint
+	cd '$(REPOSITORY_ROOT_LITERAL)' && ruby scripts/test-asset-contract.rb
+	cd '$(REPOSITORY_ROOT_LITERAL)' && ruby scripts/test-swipe-state-contract.rb
+	cd '$(REPOSITORY_ROOT_LITERAL)' && ruby scripts/test-xcode-runner-contract.rb
+	cd '$(REPOSITORY_ROOT_LITERAL)' && ruby scripts/test-workflow-contract.rb
 
-core-test:
-	cd "$$REPO_ROOT" && scripts/swift-test.sh
+core-test::
+	cd '$(REPOSITORY_ROOT_LITERAL)' && scripts/swift-test.sh
 
-test: core-test
-	cd "$$REPO_ROOT" && scripts/xcode-test.sh
+test:: core-test
+	cd '$(REPOSITORY_ROOT_LITERAL)' && scripts/xcode-test.sh
 
-build:
-	cd "$$REPO_ROOT" && scripts/xcode-build.sh
+build::
+	cd '$(REPOSITORY_ROOT_LITERAL)' && scripts/xcode-build.sh
 
-root-test:
-	cd "$$REPO_ROOT" && scripts/test-makefile-root.sh
+root-test::
+	cd '$(REPOSITORY_ROOT_LITERAL)' && scripts/test-makefile-root.sh
 
-verify: structural test build root-test
+verify:: structural test build root-test
 
-check: verify
+check:: verify
