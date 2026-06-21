@@ -114,14 +114,38 @@ final class RecipeSwipeTests: XCTestCase {
     }
 
     @MainActor
-    func testProgrammaticIntentClearsOnCancellationAndDetachedCards() {
+    func testUnownedCancellationCannotClearProgrammaticIntent() {
         let controller = makeLoadedRecipePickerController()
         let card = topCard(in: controller)
 
         tapButton(label: "Save recipe", in: controller)
         controller.viewDidCancelSwipe(card)
 
-        XCTAssertFalse(controller.view(card, shouldBeChosenWith: .right))
+        XCTAssertTrue(controller.view(card, shouldBeChosenWith: .right))
+        controller.view(card, wasChosenWith: .right)
+        XCTAssertEqual(savedRecipeNames(in: controller), ["Pasta"])
+    }
+
+    @MainActor
+    func testGestureCancellationOwnsCardUntilDelayedCallbackCompletes() {
+        let controller = makeLoadedRecipePickerController()
+        let card = topCard(in: controller)
+        let recognizer = panRecognizer(in: card)
+
+        XCTAssertTrue(controller.gestureRecognizerShouldBegin(recognizer))
+        tapButton(label: "Save recipe", in: controller)
+        controller.viewDidCancelSwipe(card)
+        tapButton(label: "Save recipe", in: controller)
+
+        XCTAssertTrue(controller.view(card, shouldBeChosenWith: .right))
+        controller.view(card, wasChosenWith: .right)
+        XCTAssertEqual(savedRecipeNames(in: controller), ["Pasta"])
+    }
+
+    @MainActor
+    func testDetachedCardCannotStartProgrammaticSwipe() {
+        let controller = makeLoadedRecipePickerController()
+        let card = topCard(in: controller)
 
         card.removeFromSuperview()
         tapButton(label: "Save recipe", in: controller)
@@ -129,6 +153,37 @@ final class RecipeSwipeTests: XCTestCase {
         XCTAssertFalse(controller.view(card, shouldBeChosenWith: .right))
         XCTAssertTrue(savedRecipeNames(in: controller).isEmpty)
         XCTAssertEqual(optionalTopCard(in: controller)?.recipe.name, "Pasta")
+    }
+
+    @MainActor
+    func testStaleOppositeCompletionCannotEraseActiveProgrammaticSwipe() {
+        let controller = makeLoadedRecipePickerController()
+        let card = topCard(in: controller)
+
+        tapButton(label: "Save recipe", in: controller)
+        XCTAssertTrue(controller.view(card, shouldBeChosenWith: .right))
+
+        controller.view(card, wasChosenWith: .left)
+        controller.view(card, wasChosenWith: .right)
+
+        XCTAssertEqual(savedRecipeNames(in: controller), ["Pasta"])
+        XCTAssertEqual(optionalTopCard(in: controller)?.recipe.name, "Pasta #2")
+    }
+
+    @MainActor
+    func testLayoutDoesNotRewriteGestureOwnedCardGeometry() {
+        let controller = makeLoadedRecipePickerController()
+        let card = topCard(in: controller)
+        let recognizer = panRecognizer(in: card)
+
+        XCTAssertTrue(controller.gestureRecognizerShouldBegin(recognizer))
+        let ownedFrame = card.frame.offsetBy(dx: 37, dy: 19)
+        card.frame = ownedFrame
+
+        controller.viewDidLayoutSubviews()
+
+        XCTAssertEqual(card.frame, ownedFrame)
+        controller.viewDidCancelSwipe(card)
     }
 
     @MainActor
@@ -180,6 +235,15 @@ final class RecipeSwipeTests: XCTestCase {
             return RecipePickerView(frame: .zero, recipe: Recipe(name: "missing", image: nil), options: MDCSwipeToChooseViewOptions())
         }
         return card
+    }
+
+    @MainActor
+    private func panRecognizer(in card: RecipePickerView) -> UIPanGestureRecognizer {
+        guard let recognizer = card.gestureRecognizers?.compactMap({ $0 as? UIPanGestureRecognizer }).first else {
+            XCTFail("expected a card pan recognizer")
+            return UIPanGestureRecognizer()
+        }
+        return recognizer
     }
 
     @MainActor
