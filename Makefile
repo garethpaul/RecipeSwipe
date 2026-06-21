@@ -1,6 +1,9 @@
-.PHONY: build check core-test lint structural test verify
+.PHONY: build check core-test lint root-test structural test verify
 
-override REPO_ROOT := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
+ifneq ($(origin MAKEFILE_LIST),file)
+$(error MAKEFILE_LIST must not be overridden)
+endif
+override REPO_ROOT := $(shell path='$(subst ','"'"',$(MAKEFILE_LIST))'; path=$$(printf '%s' "$$path" | /bin/sed 's/^ //'); directory=$$(/usr/bin/dirname -- "$$path"); CDPATH= cd -- "$$directory" && /bin/pwd -P)
 
 lint:
 	cd "$(REPO_ROOT)" && ruby scripts/check-ios-source.rb
@@ -20,6 +23,9 @@ test: core-test
 build:
 	cd "$(REPO_ROOT)" && scripts/xcode-build.sh
 
-verify: structural test build
+root-test:
+	cd "$(REPO_ROOT)" && scripts/test-makefile-root.sh
+
+verify: structural test build root-test
 
 check: verify

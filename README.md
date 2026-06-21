@@ -87,6 +87,9 @@ The setup commands above are derived from repository files. Legacy mobile, Pytho
 
 ## Maintenance Notes
 
+- Make gates reject caller-controlled `MAKEFILE_LIST` and `REPO_ROOT` values
+  before running structural, SwiftPM, XCTest, or Xcode validation.
+
 - This archived sample is maintained as Swift 5 with an iOS 12 deployment target and its vendored CocoaPods dependency.
 - See `SECURITY.md` for vulnerability reporting and safe research guidance.
 - See `VISION.md` for project direction and contribution guardrails.

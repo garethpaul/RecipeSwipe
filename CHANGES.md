@@ -1,5 +1,10 @@
 # Changes
 
+## 2026-06-21
+
+- Hardened all seven pre-existing Make gates against `MAKEFILE_LIST` and
+  `REPO_ROOT` redirection without changing app or swipe behavior.
+
 ## 2026-06-19
 
 - Modernized the archived app to Swift 5 and iOS 12 so its app and XCTest targets build with current Xcode.
