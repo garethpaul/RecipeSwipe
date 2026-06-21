@@ -22,6 +22,8 @@ end
 def process_group_alive?(pid)
   Process.kill(0, -pid)
   true
+rescue Errno::EPERM
+  true
 rescue Errno::ESRCH
   false
 end

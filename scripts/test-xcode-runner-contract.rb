@@ -126,6 +126,57 @@ def assert_watchdog_reaps_success_descendant
   end
 end
 
+def assert_watchdog_treats_eperm_probe_as_alive
+  Dir.mktmpdir('recipeswipe-watchdog-eperm-probe') do |directory|
+    child = File.join(directory, 'child')
+    shim = File.join(directory, 'process-kill-eperm.rb')
+    descendant_pid = File.join(directory, 'descendant.pid')
+    write_executable(child, <<~SH)
+      #!/bin/sh
+      sh -c 'trap "" HUP INT TERM; sleep 600' &
+      printf '%s\n' "$!" > #{Shellwords.escape(descendant_pid)}
+      exit 0
+    SH
+    File.write(shim, <<~'RUBY')
+      module Process
+        class << self
+          alias recipeswipe_original_kill kill
+
+          def kill(signal, pid)
+            raise Errno::EPERM if signal == 0 && pid.negative?
+
+            recipeswipe_original_kill(signal, pid)
+          end
+        end
+      end
+    RUBY
+    env = ENV.to_h.merge(
+      'RECIPESWIPE_TIMEOUT_TERM_GRACE' => '0.2',
+      'RECIPESWIPE_TIMEOUT_KILL_GRACE' => '0.2',
+      'RUBYOPT' => [ENV['RUBYOPT'], "-r#{shim}"].compact.join(' ')
+    )
+    started = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+    wrapper_pid = Process.spawn(
+      env,
+      'ruby',
+      '--disable-gems',
+      'scripts/run-with-timeout.rb',
+      '10',
+      'EPERM probe descendant',
+      child,
+      chdir: ROOT,
+      out: File::NULL,
+      err: File::NULL
+    ) # nosemgrep: ruby.lang.security.dangerous-exec.dangerous-exec -- executable, shim, and watchdog paths are fixed test fixtures
+    _, status = Timeout.timeout(4) { Process.wait2(wrapper_pid) }
+    elapsed = Process.clock_gettime(Process::CLOCK_MONOTONIC) - started
+
+    raise 'watchdog did not preserve successful child status after EPERM probe' unless status.success?
+    raise "watchdog EPERM cleanup was not prompt (#{elapsed.round(2)}s)" if elapsed >= 3
+    assert_no_processes([descendant_pid], child)
+  end
+end
+
 def valid_xcrun(path)
   write_executable(path, <<~'SH')
     #!/bin/sh
@@ -431,6 +482,12 @@ failures = []
 
 begin
   assert_watchdog_reaps_success_descendant
+rescue StandardError => error
+  failures << error.message
+end
+
+begin
+  assert_watchdog_treats_eperm_probe_as_alive
 rescue StandardError => error
   failures << error.message
 end
