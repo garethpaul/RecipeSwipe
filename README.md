@@ -88,8 +88,10 @@ The setup commands above are derived from repository files. Legacy mobile, Pytho
 ## Maintenance Notes
 
 - Make gates reject caller-controlled root and shell authority, preloaded or
-  ambiguous Makefiles, and shell-sensitive checkout paths before running
-  structural, SwiftPM, XCTest, or Xcode validation.
+  additional Makefiles, non-executing/error-ignoring Make modes, and unsafe
+  shell-sensitive checkout paths before running structural, SwiftPM, XCTest,
+  or Xcode validation. Trusted automation must still provide the intended
+  Ruby, Swift, and Xcode toolchain on `PATH` and avoid caller-supplied Makefiles.
 
 - This archived sample is maintained as Swift 5 with an iOS 12 deployment target and its vendored CocoaPods dependency.
 - See `SECURITY.md` for vulnerability reporting and safe research guidance.

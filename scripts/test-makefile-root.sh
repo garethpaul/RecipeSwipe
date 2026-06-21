@@ -8,9 +8,10 @@ trap 'rm -rf "$TEMP_ROOT"' EXIT HUP INT TERM
 unset MAKEFILES MAKEFILE_LIST
 
 CONTROL_DIR="$TEMP_ROOT/control"
-CHECKOUT="$TEMP_ROOT/RecipeSwipe's [gate] \"quoted\" \`touch RECIPESWIPE_BACKTICK_MARKER\`"
+CHECKOUT="$TEMP_ROOT/RecipeSwipe's [gate] \"quoted\" ; \`touch RECIPESWIPE_BACKTICK_MARKER\`"
 COMMAND_LOG="$TEMP_ROOT/commands.log"
 FAKE_SHELL_LOG="$TEMP_ROOT/fake-shell.log"
+SHADOWED_TOOL_LOG="$TEMP_ROOT/shadowed-tool.log"
 mkdir "$CONTROL_DIR" "$CHECKOUT" "$CHECKOUT/scripts" "$CHECKOUT/bin"
 CHECKOUT=$(CDPATH= cd -- "$CHECKOUT" && pwd -P)
 MAKEFILE="$CHECKOUT/Makefile"
@@ -34,6 +35,15 @@ for script in swift-test.sh xcode-test.sh xcode-build.sh test-makefile-root.sh; 
   write_logger "$CHECKOUT/scripts/$script"
 done
 chmod +x "$CHECKOUT/bin/ruby"
+
+for tool in dirname pwd sed; do
+  cat >"$CHECKOUT/bin/$tool" <<EOF
+#!/bin/sh
+printf '%s\n' '$tool' >> '$SHADOWED_TOOL_LOG'
+exit 99
+EOF
+  chmod +x "$CHECKOUT/bin/$tool"
+done
 
 FAKE_SHELL="$TEMP_ROOT/fake-shell"
 cat >"$FAKE_SHELL" <<EOF
@@ -123,6 +133,10 @@ if [ -e "$FAKE_SHELL_LOG" ]; then
   printf '%s\n' "caller-controlled SHELL was executed" >&2
   exit 1
 fi
+if [ -e "$SHADOWED_TOOL_LOG" ]; then
+  printf '%s\n' "caller PATH shadowed a root-resolution tool" >&2
+  exit 1
+fi
 
 if (cd "$CONTROL_DIR" && make --no-print-directory --file "$MAKEFILE" MAKEFILE_LIST=/tmp/untrusted check) >"$TEMP_ROOT/command-list.out" 2>&1; then
   printf '%s\n' "command MAKEFILE_LIST override unexpectedly passed" >&2
@@ -149,6 +163,51 @@ if [ -e "$COMMAND_LOG" ]; then
   exit 1
 fi
 
+LATER_MAKEFILE="$TEMP_ROOT/later.mk"
+LATER_MARKER="$TEMP_ROOT/later-marker"
+cat >"$LATER_MAKEFILE" <<EOF
+.PHONY: build check core-test lint root-test structural test verify
+build check core-test lint root-test structural test verify:
+	@touch '$LATER_MARKER'
+EOF
+rm -f "$COMMAND_LOG" "$LATER_MARKER"
+if (cd "$CONTROL_DIR" && PATH="$CHECKOUT/bin:$PATH" RECIPESWIPE_COMMAND_LOG="$COMMAND_LOG" make --no-print-directory --file "$MAKEFILE" --file "$LATER_MAKEFILE" check) >"$TEMP_ROOT/later.out" 2>&1; then
+  printf '%s\n' "later multiple -f Makefile unexpectedly passed" >&2
+  exit 1
+fi
+grep -Fq "additional Makefiles are not supported" "$TEMP_ROOT/later.out"
+if [ -e "$LATER_MARKER" ] || [ -e "$COMMAND_LOG" ]; then
+  printf '%s\n' "later multiple -f Makefile reached a quality command" >&2
+  exit 1
+fi
+
+DOLLAR_CHECKOUT="$TEMP_ROOT/RecipeSwipe \$(touch RECIPESWIPE_DOLLAR_MARKER)"
+mkdir "$DOLLAR_CHECKOUT"
+cp "$ROOT_DIR/Makefile" "$DOLLAR_CHECKOUT/Makefile"
+if (cd "$CONTROL_DIR" && make --no-print-directory --file "$DOLLAR_CHECKOUT/Makefile" check) >"$TEMP_ROOT/dollar.out" 2>&1; then
+  printf '%s\n' "dollar-command checkout path unexpectedly passed" >&2
+  exit 1
+fi
+grep -Fq "repository Makefile path could not be resolved" "$TEMP_ROOT/dollar.out"
+if [ -e "$CONTROL_DIR/RECIPESWIPE_DOLLAR_MARKER" ]; then
+  printf '%s\n' "checkout path executed dollar command substitution" >&2
+  exit 1
+fi
+
+for flag in n t q i; do
+  if (cd "$CONTROL_DIR" && MAKEFLAGS="-$flag" make --no-print-directory --file "$MAKEFILE" check) >"$TEMP_ROOT/makeflags-$flag.out" 2>&1; then
+    printf '%s\n' "MAKEFLAGS -$flag unexpectedly passed" >&2
+    exit 1
+  fi
+  grep -Fq "non-executing or error-ignoring MAKEFLAGS are not supported" "$TEMP_ROOT/makeflags-$flag.out"
+done
+
+if (cd "$CONTROL_DIR" && make -n MAKEFLAGS= --no-print-directory --file "$MAKEFILE" check) >"$TEMP_ROOT/makeflags-override.out" 2>&1; then
+  printf '%s\n' "command-line MAKEFLAGS override unexpectedly passed" >&2
+  exit 1
+fi
+grep -Fq "MAKEFLAGS must not be overridden" "$TEMP_ROOT/makeflags-override.out"
+
 EARLIER_MAKEFILE="$TEMP_ROOT/earlier.mk"
 printf '%s\n' '# Explicit caller-controlled Makefile.' >"$EARLIER_MAKEFILE"
 rm -f "$COMMAND_LOG"
@@ -162,4 +221,4 @@ if [ -e "$COMMAND_LOG" ]; then
   exit 1
 fi
 
-printf '%s\n' "Makefile root tests passed: 56 executed target/authority cases, 2 MAKEFILE_LIST rejections, 1 MAKEFILES rejection, and 1 multi-Makefile rejection"
+printf '%s\n' "Makefile root tests passed: 56 executed target/authority cases, 2 MAKEFILE_LIST rejections, 1 MAKEFILES rejection, 2 multi-Makefile rejections, 5 MAKEFLAGS rejections, and 1 dollar-path fail-closed case"
