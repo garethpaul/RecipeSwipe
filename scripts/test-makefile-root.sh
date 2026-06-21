@@ -71,6 +71,17 @@ assert_commands_stayed_in_checkout() {
   done <"$COMMAND_LOG"
 }
 
+assert_output_contains() {
+  expected=$1
+  file=$2
+  scenario=$3
+  if ! grep -Fq "$expected" "$file"; then
+    printf '%s\n' "$scenario did not report: $expected" >&2
+    cat "$file" >&2
+    exit 1
+  fi
+}
+
 run_case() {
   scenario=$1
   target=$2
@@ -142,13 +153,13 @@ if (cd "$CONTROL_DIR" && make --no-print-directory --file "$MAKEFILE" MAKEFILE_L
   printf '%s\n' "command MAKEFILE_LIST override unexpectedly passed" >&2
   exit 1
 fi
-grep -Fq "MAKEFILE_LIST must not be overridden" "$TEMP_ROOT/command-list.out"
+assert_output_contains "MAKEFILE_LIST must not be overridden" "$TEMP_ROOT/command-list.out" "command MAKEFILE_LIST override"
 
 if (cd "$CONTROL_DIR" && MAKEFILE_LIST=/tmp/untrusted make --environment-overrides --no-print-directory --file "$MAKEFILE" check) >"$TEMP_ROOT/environment-list.out" 2>&1; then
   printf '%s\n' "environment MAKEFILE_LIST override unexpectedly passed" >&2
   exit 1
 fi
-grep -Fq "MAKEFILE_LIST must not be overridden" "$TEMP_ROOT/environment-list.out"
+assert_output_contains "MAKEFILE_LIST must not be overridden" "$TEMP_ROOT/environment-list.out" "environment MAKEFILE_LIST override"
 
 PRELOADED_MAKEFILE="$TEMP_ROOT/preloaded.mk"
 printf '%s\n' 'REPO_ROOT := /tmp/preloaded-attacker-root' >"$PRELOADED_MAKEFILE"
@@ -157,7 +168,7 @@ if (cd "$CONTROL_DIR" && MAKEFILES="$PRELOADED_MAKEFILE" PATH="$CHECKOUT/bin:$PA
   printf '%s\n' "MAKEFILES preload unexpectedly passed" >&2
   exit 1
 fi
-grep -Fq "MAKEFILES must be empty" "$TEMP_ROOT/preloaded.out"
+assert_output_contains "MAKEFILES must be empty" "$TEMP_ROOT/preloaded.out" "MAKEFILES preload"
 if [ -e "$COMMAND_LOG" ]; then
   printf '%s\n' "MAKEFILES preload reached a quality command" >&2
   exit 1
@@ -175,7 +186,7 @@ if (cd "$CONTROL_DIR" && PATH="$CHECKOUT/bin:$PATH" RECIPESWIPE_COMMAND_LOG="$CO
   printf '%s\n' "later multiple -f Makefile unexpectedly passed" >&2
   exit 1
 fi
-grep -Fq "additional Makefiles are not supported" "$TEMP_ROOT/later.out"
+assert_output_contains "additional Makefiles are not supported" "$TEMP_ROOT/later.out" "later multiple -f Makefile"
 if [ -e "$LATER_MARKER" ] || [ -e "$COMMAND_LOG" ]; then
   printf '%s\n' "later multiple -f Makefile reached a quality command" >&2
   exit 1
@@ -186,11 +197,12 @@ mkdir "$DOLLAR_CHECKOUT"
 cp "$ROOT_DIR/Makefile" "$DOLLAR_CHECKOUT/Makefile"
 if (cd "$CONTROL_DIR" && make --no-print-directory --file "$DOLLAR_CHECKOUT/Makefile" check) >"$TEMP_ROOT/dollar.out" 2>&1; then
   printf '%s\n' "dollar-command checkout path unexpectedly passed" >&2
+  cat "$TEMP_ROOT/dollar.out" >&2
   exit 1
 fi
-grep -Fq "repository Makefile path could not be resolved" "$TEMP_ROOT/dollar.out"
 if [ -e "$CONTROL_DIR/RECIPESWIPE_DOLLAR_MARKER" ]; then
   printf '%s\n' "checkout path executed dollar command substitution" >&2
+  cat "$TEMP_ROOT/dollar.out" >&2
   exit 1
 fi
 
@@ -199,14 +211,14 @@ for flag in n t q i; do
     printf '%s\n' "MAKEFLAGS -$flag unexpectedly passed" >&2
     exit 1
   fi
-  grep -Fq "non-executing or error-ignoring MAKEFLAGS are not supported" "$TEMP_ROOT/makeflags-$flag.out"
+  assert_output_contains "non-executing or error-ignoring MAKEFLAGS are not supported" "$TEMP_ROOT/makeflags-$flag.out" "MAKEFLAGS -$flag"
 done
 
 if (cd "$CONTROL_DIR" && make -n MAKEFLAGS= --no-print-directory --file "$MAKEFILE" check) >"$TEMP_ROOT/makeflags-override.out" 2>&1; then
   printf '%s\n' "command-line MAKEFLAGS override unexpectedly passed" >&2
   exit 1
 fi
-grep -Fq "MAKEFLAGS must not be overridden" "$TEMP_ROOT/makeflags-override.out"
+assert_output_contains "MAKEFLAGS must not be overridden" "$TEMP_ROOT/makeflags-override.out" "command-line MAKEFLAGS override"
 
 EARLIER_MAKEFILE="$TEMP_ROOT/earlier.mk"
 printf '%s\n' '# Explicit caller-controlled Makefile.' >"$EARLIER_MAKEFILE"
@@ -215,7 +227,7 @@ if (cd "$CONTROL_DIR" && PATH="$CHECKOUT/bin:$PATH" RECIPESWIPE_COMMAND_LOG="$CO
   printf '%s\n' "multiple -f Makefiles unexpectedly passed" >&2
   exit 1
 fi
-grep -Fq "repository Makefile path could not be resolved" "$TEMP_ROOT/multiple.out"
+assert_output_contains "repository Makefile path could not be resolved" "$TEMP_ROOT/multiple.out" "earlier multiple -f Makefile"
 if [ -e "$COMMAND_LOG" ]; then
   printf '%s\n' "multiple -f Makefiles reached a quality command" >&2
   exit 1
