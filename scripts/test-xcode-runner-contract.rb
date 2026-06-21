@@ -65,7 +65,7 @@ def spawn_runner(action, env, stdout_path, stderr_path)
   end
 end
 
-def run_script(action, env, directory, label, guard_seconds: 8)
+def run_script(action, env, directory, label, guard_seconds: 12)
   stdout_path = File.join(directory, "#{label}.stdout")
   stderr_path = File.join(directory, "#{label}.stderr")
   started = Process.clock_gettime(Process::CLOCK_MONOTONIC)
@@ -245,6 +245,72 @@ def flaky_xcrun(path, attempts_path)
   SH
 end
 
+def empty_then_ready_xcrun(path, attempts_path)
+  write_executable(path, <<~SH)
+    #!/bin/sh
+    set -eu
+    attempts=0
+    [ ! -f #{Shellwords.escape(attempts_path)} ] || attempts="$(cat #{Shellwords.escape(attempts_path)})"
+    attempts=$((attempts + 1))
+    printf '%s\n' "$attempts" > #{Shellwords.escape(attempts_path)}
+    if [ "$attempts" -eq 1 ]; then
+      printf '%s\n' '{"devices":{"com.apple.CoreSimulator.SimRuntime.iOS-26-0":[]}}'
+      exit 0
+    fi
+    printf '%s\n' '{"devices":{"com.apple.CoreSimulator.SimRuntime.iOS-26-0":[{"isAvailable":true,"name":"iPad Contract","udid":"IGNORED-IPAD"},{"isAvailable":true,"name":"iPhone Contract","udid":"READY-UDID"},{"isAvailable":true,"name":"iPhone Backup","udid":"BACKUP-UDID"}]}}'
+  SH
+end
+
+def never_ready_xcrun(path, attempts_path)
+  write_executable(path, <<~SH)
+    #!/bin/sh
+    set -eu
+    attempts=0
+    [ ! -f #{Shellwords.escape(attempts_path)} ] || attempts="$(cat #{Shellwords.escape(attempts_path)})"
+    attempts=$((attempts + 1))
+    printf '%s\n' "$attempts" > #{Shellwords.escape(attempts_path)}
+    printf '%s\n' '{"devices":{"com.apple.CoreSimulator.SimRuntime.iOS-26-0":[]}}'
+  SH
+end
+
+def malformed_xcrun(path, attempts_path)
+  write_executable(path, <<~SH)
+    #!/bin/sh
+    set -eu
+    attempts=0
+    [ ! -f #{Shellwords.escape(attempts_path)} ] || attempts="$(cat #{Shellwords.escape(attempts_path)})"
+    attempts=$((attempts + 1))
+    printf '%s\n' "$attempts" > #{Shellwords.escape(attempts_path)}
+    printf '%s\n' '{'
+  SH
+end
+
+def fatal_xcrun(path, attempts_path)
+  write_executable(path, <<~SH)
+    #!/bin/sh
+    set -eu
+    attempts=0
+    [ ! -f #{Shellwords.escape(attempts_path)} ] || attempts="$(cat #{Shellwords.escape(attempts_path)})"
+    attempts=$((attempts + 1))
+    printf '%s\n' "$attempts" > #{Shellwords.escape(attempts_path)}
+    printf '%s\n' 'simctl fatal fixture' >&2
+    exit 66
+  SH
+end
+
+def fatal_75_xcrun(path, attempts_path)
+  write_executable(path, <<~SH)
+    #!/bin/sh
+    set -eu
+    attempts=0
+    [ ! -f #{Shellwords.escape(attempts_path)} ] || attempts="$(cat #{Shellwords.escape(attempts_path)})"
+    attempts=$((attempts + 1))
+    printf '%s\n' "$attempts" > #{Shellwords.escape(attempts_path)}
+    printf '%s\n' 'simctl fatal 75 fixture' >&2
+    exit 75
+  SH
+end
+
 def fake_xcodebuild(path)
   write_executable(path, <<~'SH')
     #!/bin/sh
@@ -272,6 +338,18 @@ def fake_xcodebuild(path)
 
     if [ -n "${FAKE_RECORD_DIR:-}" ]; then
       printf '%s\t%s\t%s\n' "$action" "$derived_data" "$result_bundle" > "$FAKE_RECORD_DIR/$$.record"
+    fi
+
+    if [ -n "${FAKE_EXPECTED_DESTINATION:-}" ]; then
+      found_destination=0
+      previous=""
+      for argument in "$@"; do
+        if [ "$previous" = "-destination" ] && [ "$argument" = "platform=iOS Simulator,id=$FAKE_EXPECTED_DESTINATION" ]; then
+          found_destination=1
+        fi
+        previous="$argument"
+      done
+      [ "$found_destination" -eq 1 ] || exit 93
     fi
 
     case "${FAKE_XCODEBUILD_MODE:-success}" in
@@ -566,6 +644,126 @@ def assert_discovery_retries_after_timeout
   end
 end
 
+def assert_discovery_retries_after_empty_success
+  Dir.mktmpdir('recipeswipe-discovery-empty-retry') do |directory|
+    bin = File.join(directory, 'bin')
+    FileUtils.mkdir_p(bin)
+    xcrun = File.join(bin, 'xcrun')
+    xcodebuild = File.join(bin, 'xcodebuild')
+    attempts_path = File.join(directory, 'xcrun-attempts')
+    empty_then_ready_xcrun(xcrun, attempts_path)
+    fake_xcodebuild(xcodebuild)
+    env = base_env(directory, bin, xcrun, xcodebuild).merge(
+      'RECIPESWIPE_SIMCTL_TIMEOUT' => '2',
+      'FAKE_XCODEBUILD_MODE' => 'success',
+      'FAKE_EXPECTED_DESTINATION' => 'READY-UDID'
+    )
+
+    result = run_script(:test, env, directory, 'discovery-empty-retry', guard_seconds: 15)
+    raise 'simulator discovery empty retry required external kill' if result.externally_timed_out
+    raise "simulator discovery empty retry failed: #{result.output}" unless result.status&.success?
+    attempts = File.read(attempts_path).strip
+    raise "simulator discovery did not retry empty readiness (attempts=#{attempts.inspect})" unless attempts == '2'
+    raise 'simulator discovery empty retry diagnostic missing' unless result.output.include?('retrying simulator discovery')
+    raise "discovery empty retry left temporary paths: #{temporary_runner_paths(directory).join(', ')}" unless temporary_runner_paths(directory).empty?
+  end
+end
+
+def assert_discovery_never_ready_exhausts_budget
+  Dir.mktmpdir('recipeswipe-discovery-never-ready') do |directory|
+    bin = File.join(directory, 'bin')
+    FileUtils.mkdir_p(bin)
+    xcrun = File.join(bin, 'xcrun')
+    xcodebuild = File.join(bin, 'xcodebuild')
+    attempts_path = File.join(directory, 'xcrun-attempts')
+    never_ready_xcrun(xcrun, attempts_path)
+    fake_xcodebuild(xcodebuild)
+    env = base_env(directory, bin, xcrun, xcodebuild).merge(
+      'RECIPESWIPE_SIMCTL_TIMEOUT' => '1',
+      'FAKE_XCODEBUILD_MODE' => 'success'
+    )
+
+    result = run_script(:test, env, directory, 'discovery-never-ready', guard_seconds: 15)
+    raise 'simulator discovery never-ready required external kill' if result.externally_timed_out
+    raise "simulator discovery never-ready did not exit 124 (status=#{result.status.inspect}, output=#{result.output.inspect})" unless result.status&.exitstatus == 124
+    attempts = File.read(attempts_path).strip
+    raise "simulator discovery never-ready did not exhaust exactly three attempts (attempts=#{attempts.inspect})" unless attempts == '3'
+    raise 'simulator discovery never-ready diagnostic missing' unless result.output.include?('no available iPhone simulator')
+    raise "discovery never-ready left temporary paths: #{temporary_runner_paths(directory).join(', ')}" unless temporary_runner_paths(directory).empty?
+  end
+end
+
+def assert_discovery_malformed_output_is_fatal
+  Dir.mktmpdir('recipeswipe-discovery-malformed') do |directory|
+    bin = File.join(directory, 'bin')
+    FileUtils.mkdir_p(bin)
+    xcrun = File.join(bin, 'xcrun')
+    xcodebuild = File.join(bin, 'xcodebuild')
+    attempts_path = File.join(directory, 'xcrun-attempts')
+    malformed_xcrun(xcrun, attempts_path)
+    fake_xcodebuild(xcodebuild)
+    env = base_env(directory, bin, xcrun, xcodebuild).merge(
+      'RECIPESWIPE_SIMCTL_TIMEOUT' => '1',
+      'FAKE_XCODEBUILD_MODE' => 'success'
+    )
+
+    result = run_script(:test, env, directory, 'discovery-malformed', guard_seconds: 8)
+    raise 'simulator discovery malformed probe required external kill' if result.externally_timed_out
+    raise "simulator discovery malformed did not fail with status 1 (status=#{result.status.inspect}, output=#{result.output.inspect})" unless result.status&.exitstatus == 1
+    attempts = File.read(attempts_path).strip
+    raise "simulator discovery retried malformed output (attempts=#{attempts.inspect})" unless attempts == '1'
+    raise 'simulator discovery malformed diagnostic missing' unless result.output.include?('malformed simulator discovery response')
+    raise "discovery malformed left temporary paths: #{temporary_runner_paths(directory).join(', ')}" unless temporary_runner_paths(directory).empty?
+  end
+end
+
+def assert_discovery_fatal_exit_is_not_retried
+  Dir.mktmpdir('recipeswipe-discovery-fatal') do |directory|
+    bin = File.join(directory, 'bin')
+    FileUtils.mkdir_p(bin)
+    xcrun = File.join(bin, 'xcrun')
+    xcodebuild = File.join(bin, 'xcodebuild')
+    attempts_path = File.join(directory, 'xcrun-attempts')
+    fatal_xcrun(xcrun, attempts_path)
+    fake_xcodebuild(xcodebuild)
+    env = base_env(directory, bin, xcrun, xcodebuild).merge(
+      'RECIPESWIPE_SIMCTL_TIMEOUT' => '1',
+      'FAKE_XCODEBUILD_MODE' => 'success'
+    )
+
+    result = run_script(:test, env, directory, 'discovery-fatal', guard_seconds: 8)
+    raise 'simulator discovery fatal probe required external kill' if result.externally_timed_out
+    raise "simulator discovery fatal exit was not preserved (status=#{result.status.inspect}, output=#{result.output.inspect})" unless result.status&.exitstatus == 66
+    attempts = File.read(attempts_path).strip
+    raise "simulator discovery retried fatal exit (attempts=#{attempts.inspect})" unless attempts == '1'
+    raise "discovery fatal left temporary paths: #{temporary_runner_paths(directory).join(', ')}" unless temporary_runner_paths(directory).empty?
+  end
+end
+
+def assert_discovery_fatal_75_exit_is_not_retried
+  Dir.mktmpdir('recipeswipe-discovery-fatal-75') do |directory|
+    bin = File.join(directory, 'bin')
+    FileUtils.mkdir_p(bin)
+    xcrun = File.join(bin, 'xcrun')
+    xcodebuild = File.join(bin, 'xcodebuild')
+    attempts_path = File.join(directory, 'xcrun-attempts')
+    fatal_75_xcrun(xcrun, attempts_path)
+    fake_xcodebuild(xcodebuild)
+    env = base_env(directory, bin, xcrun, xcodebuild).merge(
+      'RECIPESWIPE_SIMCTL_TIMEOUT' => '1',
+      'FAKE_XCODEBUILD_MODE' => 'success'
+    )
+
+    result = run_script(:test, env, directory, 'discovery-fatal-75', guard_seconds: 8)
+    raise 'simulator discovery fatal 75 probe required external kill' if result.externally_timed_out
+    raise "simulator discovery fatal 75 exit was not preserved (status=#{result.status.inspect}, output=#{result.output.inspect})" unless result.status&.exitstatus == 75
+    attempts = File.read(attempts_path).strip
+    raise "simulator discovery retried fatal 75 exit (attempts=#{attempts.inspect})" unless attempts == '1'
+    raise 'simulator discovery fatal 75 was misclassified as readiness' if result.output.include?('retrying simulator discovery')
+    raise "discovery fatal 75 left temporary paths: #{temporary_runner_paths(directory).join(', ')}" unless temporary_runner_paths(directory).empty?
+  end
+end
+
 failures = []
 
 begin
@@ -615,7 +813,7 @@ begin
       'XCRUN' => xcrun
     )
 
-    result = run_script(:test, env, directory, 'discovery', guard_seconds: 15)
+    result = run_script(:test, env, directory, 'discovery', guard_seconds: 20)
     raise 'simulator discovery required external kill' if result.externally_timed_out
     raise 'simulator discovery timeout did not exit 124' unless result.status&.exitstatus == 124
     raise 'simulator discovery timeout diagnostic missing' unless result.output.include?('simctl list devices timed out')
@@ -668,6 +866,36 @@ end
 
 begin
   assert_discovery_retries_after_timeout
+rescue StandardError => error
+  failures << error.message
+end
+
+begin
+  assert_discovery_retries_after_empty_success
+rescue StandardError => error
+  failures << error.message
+end
+
+begin
+  assert_discovery_never_ready_exhausts_budget
+rescue StandardError => error
+  failures << error.message
+end
+
+begin
+  assert_discovery_malformed_output_is_fatal
+rescue StandardError => error
+  failures << error.message
+end
+
+begin
+  assert_discovery_fatal_exit_is_not_retried
+rescue StandardError => error
+  failures << error.message
+end
+
+begin
+  assert_discovery_fatal_75_exit_is_not_retried
 rescue StandardError => error
   failures << error.message
 end

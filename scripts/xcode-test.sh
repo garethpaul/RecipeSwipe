@@ -12,6 +12,7 @@ XCODEBUILD_TIMEOUT="${RECIPESWIPE_XCODEBUILD_TIMEOUT:-600}"
 XCRUN="${XCRUN:-xcrun}"
 XCODEBUILD="${XCODEBUILD:-xcodebuild}"
 WATCHDOG_PID=""
+DEVICE_ID=""
 
 cleanup() {
   rm -rf "$DERIVED_DATA" "$RESULT_DIRECTORY" "$SIMCTL_OUTPUT"
@@ -40,13 +41,53 @@ run_with_timeout() {
   return "$exit_code"
 }
 
+select_simulator_device() {
+  ruby --disable-gems -rjson -e '
+    begin
+      devices = JSON.parse(STDIN.read).fetch("devices").values.flatten
+    rescue JSON::ParserError, KeyError, NoMethodError => error
+      warn "malformed simulator discovery response: #{error.message}"
+      exit 1
+    end
+
+    phone = devices.find { |device| device["isAvailable"] && device["name"].start_with?("iPhone") }
+    unless phone
+      warn "no available iPhone simulator"
+      exit 0
+    end
+
+    udid = phone["udid"]
+    unless udid.is_a?(String) && !udid.empty?
+      warn "malformed simulator discovery response: selected iPhone is missing a udid"
+      exit 1
+    end
+
+    puts udid
+  ' < "$SIMCTL_OUTPUT"
+}
+
 discover_simulator() {
   local attempt
   local exit_code
+  local selected_device
 
   for ((attempt = 1; attempt <= SIMCTL_ATTEMPTS; attempt += 1)); do
     if run_with_timeout "$SIMCTL_ATTEMPT_TIMEOUT" "simctl list devices" "$XCRUN" simctl list devices available -j > "$SIMCTL_OUTPUT"; then
-      return 0
+      if selected_device="$(select_simulator_device)"; then
+        if [[ -n "$selected_device" ]]; then
+          DEVICE_ID="$selected_device"
+          return 0
+        fi
+
+        if [[ "$attempt" -eq "$SIMCTL_ATTEMPTS" ]]; then
+          return 124
+        fi
+
+        printf 'simctl list devices found no available iPhone on attempt %d/%d; retrying simulator discovery\n' "$attempt" "$SIMCTL_ATTEMPTS" >&2
+        continue
+      else
+        return "$?"
+      fi
     else
       exit_code=$?
     fi
@@ -65,13 +106,6 @@ trap 'handle_signal INT' INT
 trap 'handle_signal TERM' TERM
 
 discover_simulator
-SIMCTL_JSON="$(<"$SIMCTL_OUTPUT")"
-DEVICE_ID="$(printf '%s' "$SIMCTL_JSON" | ruby -rjson -e '
-  devices = JSON.parse(STDIN.read).fetch("devices").values.flatten
-  phone = devices.find { |device| device["isAvailable"] && device["name"].start_with?("iPhone") }
-  abort "no available iPhone simulator" unless phone
-  puts phone.fetch("udid")
-')"
 
 run_with_timeout "$XCODEBUILD_TIMEOUT" "xcodebuild test" "$XCODEBUILD" test \
   -workspace "$ROOT/RecipeSwipe.xcworkspace" \
