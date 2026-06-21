@@ -1,7 +1,7 @@
 import UIKit
 
 @MainActor
-final class RecipePickerViewController: UIViewController, @preconcurrency MDCSwipeToChooseDelegate {
+final class RecipePickerViewController: UIViewController, @preconcurrency MDCSwipeToChooseDelegate, UIGestureRecognizerDelegate {
     private let buttonDiameter: CGFloat = 50
     private let buttonHorizontalPadding: CGFloat = 90
     private let thresholdPolicy = SwipeThresholdPolicy(minimumTranslation: 80, minimumVelocity: 500)
@@ -10,9 +10,11 @@ final class RecipePickerViewController: UIViewController, @preconcurrency MDCSwi
     private var topCardView: RecipePickerView?
     private var bottomCardView: RecipePickerView?
     private var savedRecipes: [Recipe] = []
-    private var activeSwipeToken: SwipeDeck<Recipe>.Token?
-    private var pendingProgrammaticIntent: SwipeIntent?
-    private var isSwipeInFlight = false
+    private var swipeLifecycle = SwipeLifecycle<SwipeDeck<Recipe>.Token>()
+    private weak var pendingProgrammaticCard: RecipePickerView?
+    private var pendingProgrammaticToken: SwipeDeck<Recipe>.Token?
+    private weak var gestureCard: RecipePickerView?
+    private var gestureToken: SwipeDeck<Recipe>.Token?
 
     private let nopeButton = UIButton(type: .system)
     private let likeButton = UIButton(type: .system)
@@ -37,6 +39,7 @@ final class RecipePickerViewController: UIViewController, @preconcurrency MDCSwi
     }
 
     private func loadInitialRecipeCards(recipes: [Recipe]) {
+        resetSwipeLifecycle()
         topCardView?.removeFromSuperview()
         bottomCardView?.removeFromSuperview()
         deck = SwipeDeck(items: recipes)
@@ -62,30 +65,58 @@ final class RecipePickerViewController: UIViewController, @preconcurrency MDCSwi
     }
 
     func view(_ view: UIView, shouldBeChosenWith direction: MDCSwipeDirection) -> Bool {
-        guard
-            let recipeView = view as? RecipePickerView,
-            recipeView === topCardView,
-            !isSwipeInFlight,
-            let intent = swipeIntent(for: direction)
-        else {
+        guard let recipeView = view as? RecipePickerView else {
             return false
         }
 
-        if let pendingProgrammaticIntent {
-            guard pendingProgrammaticIntent == intent else { return false }
-        } else {
-            guard gestureIntent(for: recipeView, direction: intent) == intent else { return false }
+        guard recipeView === topCardView, !swipeLifecycle.isActive else {
+            return false
         }
 
-        isSwipeInFlight = true
-        activeSwipeToken = deck.topToken
+        guard let intent = swipeIntent(for: direction) else {
+            if recipeView === pendingProgrammaticCard {
+                swipeLifecycle.cancelProgrammaticSwipe(token: pendingProgrammaticToken)
+                clearPendingProgrammaticIntent()
+                updateSwipeButtonsEnabled()
+            }
+            return false
+        }
+
+        if pendingProgrammaticCard != nil {
+            guard
+                pendingProgrammaticCard === recipeView,
+                pendingProgrammaticToken == deck.topToken,
+                recipeView.superview === self.view,
+                swipeLifecycle.approveSwipe(intent: intent, token: pendingProgrammaticToken)
+            else {
+                swipeLifecycle.cancelProgrammaticSwipe(token: pendingProgrammaticToken)
+                clearPendingProgrammaticIntent()
+                updateSwipeButtonsEnabled()
+                return false
+            }
+            clearPendingProgrammaticIntent()
+        } else {
+            guard
+                gestureCard === recipeView,
+                gestureToken == deck.topToken,
+                gestureIntent(for: recipeView, direction: intent) == intent,
+                swipeLifecycle.approveSwipe(intent: intent, token: gestureToken)
+            else {
+                return false
+            }
+            clearGestureOwnership()
+        }
+
         updateSwipeButtonsEnabled()
         return true
     }
 
     func viewDidCancelSwipe(_ view: UIView) {
-        guard view === topCardView else { return }
-        resetSwipeLifecycle()
+        guard view === topCardView, view === gestureCard else { return }
+        swipeLifecycle.cancelGesture(token: gestureToken)
+        clearGestureOwnership()
+        updateSwipeButtonsEnabled()
+        layoutDeck()
         UIView.animate(withDuration: 0.16) { [weak self] in
             self?.bottomCardView?.frame = self?.bottomCardFrame() ?? .zero
         }
@@ -95,9 +126,8 @@ final class RecipePickerViewController: UIViewController, @preconcurrency MDCSwi
         guard
             let recipeView = view as? RecipePickerView,
             recipeView === topCardView,
-            isSwipeInFlight,
             let intent = swipeIntent(for: direction),
-            let token = activeSwipeToken,
+            let token = swipeLifecycle.completeSwipe(intent: intent, token: deck.topToken),
             let consumedRecipe = deck.consumeTop(direction: intent, token: token)
         else {
             return
@@ -157,10 +187,20 @@ final class RecipePickerViewController: UIViewController, @preconcurrency MDCSwi
     }
 
     private func resetSwipeLifecycle() {
-        activeSwipeToken = nil
-        pendingProgrammaticIntent = nil
-        isSwipeInFlight = false
+        swipeLifecycle.reset()
+        clearPendingProgrammaticIntent()
+        clearGestureOwnership()
         updateSwipeButtonsEnabled()
+    }
+
+    private func clearPendingProgrammaticIntent() {
+        pendingProgrammaticCard = nil
+        pendingProgrammaticToken = nil
+    }
+
+    private func clearGestureOwnership() {
+        gestureCard = nil
+        gestureToken = nil
     }
 
     private func topCardFrame() -> CGRect {
@@ -186,7 +226,7 @@ final class RecipePickerViewController: UIViewController, @preconcurrency MDCSwi
     }
 
     private func updateSwipeButtonsEnabled() {
-        let hasActiveCard = topCardView != nil && !isSwipeInFlight
+        let hasActiveCard = topCardView != nil && !swipeLifecycle.isBusy
         nopeButton.isEnabled = hasActiveCard
         likeButton.isEnabled = hasActiveCard
         emptyImageView.isHidden = topCardView != nil
@@ -234,14 +274,18 @@ final class RecipePickerViewController: UIViewController, @preconcurrency MDCSwi
     }
 
     private func requestSwipe(_ intent: SwipeIntent) {
-        guard !isSwipeInFlight, let topCardView else { return }
-        pendingProgrammaticIntent = intent
+        guard
+            let topCardView,
+            topCardView.superview === view,
+            let token = deck.topToken,
+            swipeLifecycle.requestProgrammaticSwipe(intent, token: token)
+        else {
+            return
+        }
+        pendingProgrammaticCard = topCardView
+        pendingProgrammaticToken = token
         updateSwipeButtonsEnabled()
         topCardView.mdc_swipe(intent == .left ? .left : .right)
-        if !isSwipeInFlight {
-            pendingProgrammaticIntent = nil
-            updateSwipeButtonsEnabled()
-        }
     }
 
     private func constructBackground() {
@@ -267,18 +311,25 @@ final class RecipePickerViewController: UIViewController, @preconcurrency MDCSwi
         options.likedColor = .systemBlue
         options.nopeText = "Delete"
         options.onPan = { [weak self] state in
-            guard let self, let state, state.view === self.topCardView, !self.isSwipeInFlight else {
+            guard let self, let state, state.view === self.topCardView, !self.swipeLifecycle.isActive else {
                 return
             }
             let ratio = CGFloat(max(0, min(1, state.thresholdRatio.isFinite ? state.thresholdRatio : 0)))
             self.bottomCardView?.frame = self.bottomCardFrame().offsetBy(dx: 0, dy: -ratio * 10)
         }
-        return RecipePickerView(frame: frame, recipe: recipe, options: options)
+        let recipeView = RecipePickerView(frame: frame, recipe: recipe, options: options)
+        recipeView.gestureRecognizers?
+            .compactMap { $0 as? UIPanGestureRecognizer }
+            .forEach {
+                $0.delegate = self
+                $0.addTarget(self, action: #selector(handleSwipeGestureState(_:)))
+            }
+        return recipeView
     }
 
     private func layoutDeck() {
-        topCardView?.frame = topCardFrame()
-        if !isSwipeInFlight {
+        if swipeLifecycle.allowsCardLayout {
+            topCardView?.frame = topCardFrame()
             bottomCardView?.frame = bottomCardFrame()
         }
 
@@ -308,5 +359,34 @@ final class RecipePickerViewController: UIViewController, @preconcurrency MDCSwi
     private func bringControlsToFront() {
         view.bringSubviewToFront(nopeButton)
         view.bringSubviewToFront(likeButton)
+    }
+
+    func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
+        guard
+            let recipeView = gestureRecognizer.view as? RecipePickerView,
+            recipeView === topCardView,
+            recipeView.superview === view,
+            let token = deck.topToken,
+            swipeLifecycle.beginGesture(token: token)
+        else {
+            return false
+        }
+
+        gestureCard = recipeView
+        gestureToken = token
+        updateSwipeButtonsEnabled()
+        return true
+    }
+
+    @objc private func handleSwipeGestureState(_ gestureRecognizer: UIPanGestureRecognizer) {
+        guard gestureRecognizer.state == .cancelled || gestureRecognizer.state == .failed else {
+            return
+        }
+        guard gestureRecognizer.view === gestureCard else { return }
+
+        swipeLifecycle.cancelGesture(token: gestureToken)
+        clearGestureOwnership()
+        updateSwipeButtonsEnabled()
+        layoutDeck()
     }
 }

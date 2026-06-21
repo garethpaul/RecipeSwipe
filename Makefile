@@ -8,6 +8,7 @@ lint:
 structural: lint
 	cd "$(REPO_ROOT)" && ruby scripts/test-asset-contract.rb
 	cd "$(REPO_ROOT)" && ruby scripts/test-swipe-state-contract.rb
+	cd "$(REPO_ROOT)" && ruby scripts/test-xcode-runner-contract.rb
 	cd "$(REPO_ROOT)" && ruby scripts/test-workflow-contract.rb
 
 core-test:

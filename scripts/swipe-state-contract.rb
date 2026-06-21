@@ -12,11 +12,19 @@ module SwipeStateContract
     makefile = read(root, 'Makefile')
     failures = []
 
-    failures << 'must bind both approval and completion callbacks to the active card identity' if controller.scan('recipeView === topCardView').length < 2
-    failures << 'must reject duplicate or reentrant swipes throughout the lifecycle' if controller.scan('!isSwipeInFlight').length < 5
+    failures << 'must bind approval, completion, and gesture ownership to the active card identity' if controller.scan('recipeView === topCardView').length < 3
     require_text(failures, controller, 'deck.consumeTop(direction: intent, token: token)', 'consume cards with the captured generation token')
     require_text(failures, controller, 'state.view === self.topCardView', 'ignore stale pan callbacks')
-    require_text(failures, controller, 'pendingProgrammaticIntent == intent', 'bind programmatic swipes to their explicit direction')
+    require_text(failures, controller, 'swipeLifecycle.requestProgrammaticSwipe(intent, token: token)', 'reject duplicate or reentrant programmatic swipes')
+    require_text(failures, controller, 'swipeLifecycle.beginGesture(token: token)', 'own user gestures before callbacks can race')
+    failures << 'must release only owned gesture callbacks and terminal recognizer states' if controller.scan('swipeLifecycle.cancelGesture(token: gestureToken)').length < 2
+    require_text(failures, controller, '$0.addTarget(self, action: #selector(handleSwipeGestureState(_:)))', 'release gesture ownership when recognizers cancel or fail')
+    require_text(failures, controller, 'gestureRecognizer.state == .cancelled || gestureRecognizer.state == .failed', 'handle every non-delegate gesture termination')
+    require_text(failures, controller, 'swipeLifecycle.completeSwipe(intent: intent, token: deck.topToken)', 'complete only the active intent and generation')
+    require_text(failures, controller, 'if swipeLifecycle.allowsCardLayout', 'preserve card geometry while a transition owns it')
+    require_text(failures, controller, 'pendingProgrammaticCard === recipeView', 'bind programmatic swipes to their pending card identity')
+    require_text(failures, controller, 'pendingProgrammaticToken == deck.topToken', 'bind programmatic swipes to their pending deck token')
+    require_text(failures, controller, 'recipeView.superview === self.view', 'reject detached programmatic cards')
     require_text(failures, controller, 'translationX: Double(recognizer.translation(in: card).x)', 'validate gesture translation')
     require_text(failures, controller, 'velocityX: Double(recognizer.velocity(in: card).x)', 'validate gesture velocity')
     require_text(failures, controller, 'let nextBottom', 'own bottom-card animation completion by immutable view identity')
@@ -24,6 +32,8 @@ module SwipeStateContract
     require_text(failures, core, 'translationX.isFinite', 'reject non-finite gesture translation')
     require_text(failures, core, 'velocityX.isFinite', 'reject non-finite gesture velocity')
     require_text(failures, core, 'token == topToken', 'reject duplicate deck consumption')
+    require_text(failures, core, 'case .gesture(let ownedToken) = owner, ownedToken == token', 'keep stale cancellation from clearing another owner')
+    require_text(failures, core, 'case .active(let ownedIntent, let ownedToken) = owner', 'keep stale completion from clearing the active owner')
     require_text(failures, core, 'items.indices.contains(requestedIndex)', 'guard deck exhaustion')
     require_text(failures, core, 'CharacterSet.controlCharacters', 'sanitize control characters in recipe names')
 

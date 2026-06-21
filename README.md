@@ -62,9 +62,12 @@ The setup commands above are derived from repository files. Legacy mobile, Pytho
 ## Testing and Verification
 
 - `make check` is location-independent and runs the complete maintained gate.
-- The gate runs 4 pure Swift deck/gesture tests, 4 native XCTest cases on an
+- The gate runs 4 pure Swift deck/gesture tests, the native XCTest suite on an
   available iPhone simulator, asset integrity checks, 25 hostile state/workflow
   mutations, and a generic arm64/x86_64 simulator build.
+- Simulator discovery and every `xcodebuild` phase run in bounded process groups;
+  set `RECIPESWIPE_SIMCTL_TIMEOUT` or `RECIPESWIPE_XCODEBUILD_TIMEOUT` to adjust
+  their default 15-second and 600-second limits.
 - The swipe controller binds approval and completion to the active card identity,
   uses generation tokens for exactly-once deck consumption, validates finite
   aligned translation/velocity thresholds, and rejects stale pan callbacks.
