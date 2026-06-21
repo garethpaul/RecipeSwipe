@@ -35,6 +35,9 @@ checks, SwiftPM, XCTest, and Xcode commands outside the reviewed checkout.
   combine `REPOSITORY_MAKEFILE` replacement with single-colon replacement of
   every repository recipe. The combined eight-recipe bypass fails during Make
   parsing before any attacker marker or quality command executes.
+- Pin `/bin/sh -c` target-specifically and embed the reviewed checkout root in
+  repository recipes so later non-override target-specific variables cannot
+  intercept the guard or redirect quality commands.
 - Use absolute root-resolution tools so caller `PATH` entries cannot replace
   `sed`, `dirname`, or `pwd` while the checkout location is established.
 - Add coverage for all seven pre-existing public Make targets plus the root regression gate.

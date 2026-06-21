@@ -95,7 +95,9 @@ The setup commands above are derived from repository files. Legacy mobile, Pytho
   GNU Make `override` directives, caller-added double-colon recipes, and
   startup parse-time code can execute with Make-level authority. Trusted
   automation must also provide the intended Ruby, Swift, and Xcode toolchain
-  on `PATH` and avoid caller-supplied Makefiles.
+  on `PATH` and avoid caller-supplied Makefiles. Repository aliases pin their
+  shell target-specifically and embed the reviewed checkout root before later
+  non-override target-specific variables can alter recipe execution.
 
 - This archived sample is maintained as Swift 5 with an iOS 12 deployment target and its vendored CocoaPods dependency.
 - See `SECURITY.md` for vulnerability reporting and safe research guidance.

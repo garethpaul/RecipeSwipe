@@ -210,6 +210,23 @@ if [ -e "$COMBINED_MARKER" ] || [ -e "$COMMAND_LOG" ]; then
 fi
 assert_output_contains "has both : and :: entries" "$TEMP_ROOT/combined-later.out" "combined later Makefile authority bypass"
 
+TARGET_SHELL_MAKEFILE="$TEMP_ROOT/target-shell-later.mk"
+TARGET_SHELL_LOG="$TEMP_ROOT/target-shell.log"
+cat >"$TARGET_SHELL_MAKEFILE" <<EOF
+build check core-test lint root-test structural test verify: SHELL := $FAKE_SHELL
+build check core-test lint root-test structural test verify: .SHELLFLAGS := -c
+EOF
+rm -f "$COMMAND_LOG" "$TARGET_SHELL_LOG" "$FAKE_SHELL_LOG"
+if (cd "$CONTROL_DIR" && PATH="$CHECKOUT/bin:$PATH" RECIPESWIPE_COMMAND_LOG="$COMMAND_LOG" make --no-print-directory --file "$MAKEFILE" --file "$TARGET_SHELL_MAKEFILE" lint) >"$TEMP_ROOT/target-shell.out" 2>&1; then
+  printf '%s\n' "later target-specific shell unexpectedly passed" >&2
+  exit 1
+fi
+assert_output_contains "additional Makefiles are not supported" "$TEMP_ROOT/target-shell.out" "later target-specific shell"
+if [ -e "$FAKE_SHELL_LOG" ] || [ -e "$COMMAND_LOG" ]; then
+  printf '%s\n' "later target-specific shell intercepted repository validation" >&2
+  exit 1
+fi
+
 DOLLAR_CHECKOUT="$TEMP_ROOT/RecipeSwipe \$(touch RECIPESWIPE_DOLLAR_MARKER)"
 mkdir "$DOLLAR_CHECKOUT"
 cp "$ROOT_DIR/Makefile" "$DOLLAR_CHECKOUT/Makefile"
@@ -257,4 +274,4 @@ grep -Fq 'caller-added double-colon recipes' "$ROOT_DIR/README.md"
 grep -Fq "$BOUNDARY_TEXT" "$ROOT_DIR/docs/plans/2026-06-21-safe-make-root.md"
 grep -Fq 'caller-added double-colon recipes' "$ROOT_DIR/docs/plans/2026-06-21-safe-make-root.md"
 
-printf '%s\n' "Makefile root tests passed: 56 executed target/authority cases, 2 MAKEFILE_LIST rejections, 1 MAKEFILES rejection, 3 multi-Makefile rejections including the combined eight-recipe bypass, 5 MAKEFLAGS rejections, 1 dollar-path fail-closed case, and documented override/double-colon caller boundaries"
+printf '%s\n' "Makefile root tests passed: 56 executed target/authority cases, 2 MAKEFILE_LIST rejections, 1 MAKEFILES rejection, 3 multi-Makefile rejections including the combined eight-recipe bypass, 1 later target-specific shell rejection, 5 MAKEFLAGS rejections, 1 dollar-path fail-closed case, and documented override/double-colon caller boundaries"
