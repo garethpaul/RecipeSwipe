@@ -6,11 +6,19 @@ label = ARGV.shift
 
 abort('usage: run-with-timeout.rb seconds label command [args...]') if seconds_text.nil? || label.nil? || ARGV.empty?
 
-timeout = Float(seconds_text)
-abort('timeout must be positive') unless timeout.positive?
+def duration(value, label, allow_zero:)
+  parsed = Float(value)
+  valid = parsed.finite? && (allow_zero ? parsed >= 0 : parsed.positive?)
+  abort("#{label} must be finite and #{allow_zero ? 'non-negative' : 'positive'}") unless valid
 
-term_grace = Float(ENV.fetch('RECIPESWIPE_TIMEOUT_TERM_GRACE', '0.5'))
-kill_grace = Float(ENV.fetch('RECIPESWIPE_TIMEOUT_KILL_GRACE', '0.5'))
+  parsed
+rescue ArgumentError, TypeError
+  abort("#{label} must be finite and #{allow_zero ? 'non-negative' : 'positive'}")
+end
+
+timeout = duration(seconds_text, 'timeout', allow_zero: false)
+term_grace = duration(ENV.fetch('RECIPESWIPE_TIMEOUT_TERM_GRACE', '0.5'), 'TERM grace', allow_zero: true)
+kill_grace = duration(ENV.fetch('RECIPESWIPE_TIMEOUT_KILL_GRACE', '0.5'), 'KILL grace', allow_zero: true)
 received_signal = nil
 
 def kill_process_group(pid, signal)

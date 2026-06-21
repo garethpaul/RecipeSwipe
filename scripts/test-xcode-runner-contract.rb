@@ -2,6 +2,7 @@
 # frozen_string_literal: true
 
 require 'fileutils'
+require 'open3'
 require 'shellwords'
 require 'tmpdir'
 require 'timeout'
@@ -180,6 +181,32 @@ def assert_watchdog_treats_eperm_probe_as_alive
     raise "watchdog EPERM cleanup was not prompt (#{elapsed.round(2)}s)" if elapsed >= 3
     raise 'watchdog EPERM process-group probe was not exercised' unless File.exist?(eperm_probe_marker)
     assert_no_processes([descendant_pid], child)
+  end
+end
+
+def assert_watchdog_rejects_unbounded_durations
+  invalid_configurations = [
+    [{}, 'Infinity', 'timeout must be finite and positive'],
+    [{}, 'NaN', 'timeout must be finite and positive'],
+    [{}, '0', 'timeout must be finite and positive'],
+    [{ 'RECIPESWIPE_TIMEOUT_TERM_GRACE' => '-1' }, '1', 'TERM grace must be finite and non-negative'],
+    [{ 'RECIPESWIPE_TIMEOUT_TERM_GRACE' => 'Infinity' }, '1', 'TERM grace must be finite and non-negative'],
+    [{ 'RECIPESWIPE_TIMEOUT_KILL_GRACE' => 'NaN' }, '1', 'KILL grace must be finite and non-negative']
+  ]
+
+  invalid_configurations.each do |environment, timeout, diagnostic|
+    output, status = Open3.capture2e(
+      ENV.to_h.merge(environment),
+      'ruby',
+      '--disable-gems',
+      'scripts/run-with-timeout.rb',
+      timeout,
+      'invalid duration',
+      'true',
+      chdir: ROOT
+    )
+    raise "watchdog accepted invalid duration #{timeout.inspect} with #{environment.inspect}" if status.success?
+    raise "watchdog diagnostic missing: #{diagnostic}" unless output.include?(diagnostic)
   end
 end
 
@@ -494,6 +521,12 @@ end
 
 begin
   assert_watchdog_treats_eperm_probe_as_alive
+rescue StandardError => error
+  failures << error.message
+end
+
+begin
+  assert_watchdog_rejects_unbounded_durations
 rescue StandardError => error
   failures << error.message
 end
