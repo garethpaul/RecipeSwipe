@@ -2,7 +2,7 @@
 
 override SHELL := /bin/sh
 override .SHELLFLAGS := -c
-ifneq ($(filter command line override,$(origin MAKEFLAGS)),)
+ifneq ($(filter command line,$(origin MAKEFLAGS)),)
 $(error MAKEFLAGS must not be overridden for repository verification)
 endif
 override REPOSITORY_MAKE_FIRST_FLAGS := $(firstword $(MAKEFLAGS))
