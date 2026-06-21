@@ -1,5 +1,13 @@
 # Changes
 
+## 2026-06-21
+
+- Hardened all seven pre-existing Make gates against caller-controlled root and
+  shell authority, preloaded Makefiles, ambiguous Makefile lists, and
+  shell-sensitive checkout paths without changing app or swipe behavior.
+- Rejected later target-replacing Makefiles and non-executing/error-ignoring
+  Make modes, and documented the trusted `PATH` and GNU Make preload boundary.
+
 ## 2026-06-19
 
 - Modernized the archived app to Swift 5 and iOS 12 so its app and XCTest targets build with current Xcode.
