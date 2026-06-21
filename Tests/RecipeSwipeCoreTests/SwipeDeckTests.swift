@@ -41,4 +41,47 @@ final class SwipeDeckTests: XCTestCase {
         XCTAssertEqual(RecipeName.normalized("\u{0000}\u{0007}"), "Untitled recipe")
         XCTAssertEqual(RecipeName.normalized(String(repeating: "x", count: 140)).count, 80)
     }
+
+    func testGestureOwnershipBlocksProgrammaticRequestsUntilOwnedCancellationCompletes() {
+        var lifecycle = SwipeLifecycle<Int>()
+
+        XCTAssertTrue(lifecycle.beginGesture(token: 1))
+        XCTAssertFalse(lifecycle.requestProgrammaticSwipe(.right, token: 1))
+        XCTAssertFalse(lifecycle.allowsCardLayout)
+
+        lifecycle.cancelGesture(token: 2)
+        XCTAssertTrue(lifecycle.isBusy)
+
+        lifecycle.cancelGesture(token: 1)
+        XCTAssertFalse(lifecycle.isBusy)
+        XCTAssertTrue(lifecycle.allowsCardLayout)
+        XCTAssertTrue(lifecycle.requestProgrammaticSwipe(.right, token: 1))
+    }
+
+    func testStaleCompletionCannotEraseTheActiveSwipeOwner() {
+        var lifecycle = SwipeLifecycle<Int>()
+
+        XCTAssertTrue(lifecycle.requestProgrammaticSwipe(.right, token: 7))
+        XCTAssertTrue(lifecycle.approveSwipe(intent: .right, token: 7))
+
+        XCTAssertNil(lifecycle.completeSwipe(intent: .left, token: 7))
+        XCTAssertTrue(lifecycle.isBusy)
+        XCTAssertFalse(lifecycle.allowsCardLayout)
+
+        XCTAssertEqual(lifecycle.completeSwipe(intent: .right, token: 7), 7)
+        XCTAssertFalse(lifecycle.isBusy)
+    }
+
+    func testCancellationCannotClearProgrammaticOrActiveOwnership() {
+        var pending = SwipeLifecycle<Int>()
+        XCTAssertTrue(pending.requestProgrammaticSwipe(.left, token: 3))
+        pending.cancelGesture(token: 3)
+        XCTAssertTrue(pending.approveSwipe(intent: .left, token: 3))
+
+        var active = SwipeLifecycle<Int>()
+        XCTAssertTrue(active.beginGesture(token: 4))
+        XCTAssertTrue(active.approveSwipe(intent: .right, token: 4))
+        active.cancelGesture(token: 4)
+        XCTAssertEqual(active.completeSwipe(intent: .right, token: 4), 4)
+    }
 }
