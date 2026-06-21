@@ -6,7 +6,8 @@ DERIVED_DATA="$(mktemp -d "${TMPDIR:-/tmp}/RecipeSwipe-DerivedData.XXXXXX")"
 RESULT_DIRECTORY="$(mktemp -d "${TMPDIR:-/tmp}/RecipeSwipe-TestResults.XXXXXX")"
 RESULT_BUNDLE="$RESULT_DIRECTORY/RecipeSwipeTests.xcresult"
 SIMCTL_OUTPUT="$(mktemp "${TMPDIR:-/tmp}/RecipeSwipe-Simctl.XXXXXX")"
-SIMCTL_TIMEOUT="${RECIPESWIPE_SIMCTL_TIMEOUT:-60}"
+SIMCTL_ATTEMPT_TIMEOUT="${RECIPESWIPE_SIMCTL_TIMEOUT:-20}"
+SIMCTL_ATTEMPTS=3
 XCODEBUILD_TIMEOUT="${RECIPESWIPE_XCODEBUILD_TIMEOUT:-600}"
 XCRUN="${XCRUN:-xcrun}"
 XCODEBUILD="${XCODEBUILD:-xcodebuild}"
@@ -39,12 +40,31 @@ run_with_timeout() {
   return "$exit_code"
 }
 
+discover_simulator() {
+  local attempt
+  local exit_code
+
+  for ((attempt = 1; attempt <= SIMCTL_ATTEMPTS; attempt += 1)); do
+    if run_with_timeout "$SIMCTL_ATTEMPT_TIMEOUT" "simctl list devices" "$XCRUN" simctl list devices available -j > "$SIMCTL_OUTPUT"; then
+      return 0
+    else
+      exit_code=$?
+    fi
+
+    if [[ "$exit_code" -ne 124 || "$attempt" -eq "$SIMCTL_ATTEMPTS" ]]; then
+      return "$exit_code"
+    fi
+
+    printf 'simctl list devices timed out on attempt %d/%d; retrying simulator discovery\n' "$attempt" "$SIMCTL_ATTEMPTS" >&2
+  done
+}
+
 trap cleanup EXIT
 trap 'handle_signal HUP' HUP
 trap 'handle_signal INT' INT
 trap 'handle_signal TERM' TERM
 
-run_with_timeout "$SIMCTL_TIMEOUT" "simctl list devices" "$XCRUN" simctl list devices available -j > "$SIMCTL_OUTPUT"
+discover_simulator
 SIMCTL_JSON="$(<"$SIMCTL_OUTPUT")"
 DEVICE_ID="$(printf '%s' "$SIMCTL_JSON" | ruby -rjson -e '
   devices = JSON.parse(STDIN.read).fetch("devices").values.flatten

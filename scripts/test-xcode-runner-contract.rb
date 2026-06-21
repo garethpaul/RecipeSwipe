@@ -11,8 +11,15 @@ ROOT = File.expand_path('..', __dir__)
 
 def assert_default_time_bounds
   test_runner = File.read(File.join(ROOT, 'scripts/xcode-test.sh'))
-  expected = 'SIMCTL_TIMEOUT="${RECIPESWIPE_SIMCTL_TIMEOUT:-60}"'
-  raise 'simulator discovery default must remain bounded at 60 seconds' unless test_runner.include?(expected)
+  expectations = {
+    'SIMCTL_ATTEMPT_TIMEOUT="${RECIPESWIPE_SIMCTL_TIMEOUT:-20}"' => 'simulator discovery attempts must remain bounded at 20 seconds',
+    'SIMCTL_ATTEMPTS=3' => 'simulator discovery must retain exactly three attempts',
+    'XCODEBUILD_TIMEOUT="${RECIPESWIPE_XCODEBUILD_TIMEOUT:-600}"' => 'xcodebuild timeout must remain independent at 600 seconds'
+  }
+
+  expectations.each do |source, diagnostic|
+    raise diagnostic unless test_runner.lines.map(&:chomp).include?(source)
+  end
 end
 RunResult = Struct.new(:status, :elapsed, :output, :externally_timed_out, keyword_init: true)
 
@@ -223,6 +230,21 @@ def valid_xcrun(path)
   SH
 end
 
+def flaky_xcrun(path, attempts_path)
+  write_executable(path, <<~SH)
+    #!/bin/sh
+    set -eu
+    attempts=0
+    [ ! -f #{Shellwords.escape(attempts_path)} ] || attempts="$(cat #{Shellwords.escape(attempts_path)})"
+    attempts=$((attempts + 1))
+    printf '%s\n' "$attempts" > #{Shellwords.escape(attempts_path)}
+    if [ "$attempts" -eq 1 ]; then
+      exit 124
+    fi
+    printf '%s\n' '{"devices":{"com.apple.CoreSimulator.SimRuntime.iOS-26-0":[{"isAvailable":true,"name":"iPhone Contract","udid":"FAKE-UDID"}]}}'
+  SH
+end
+
 def fake_xcodebuild(path)
   write_executable(path, <<~'SH')
     #!/bin/sh
@@ -304,9 +326,11 @@ def assert_no_processes(pid_paths, executable)
   pid_paths.each do |path|
     next unless File.exist?(path)
 
-    pid = Integer(File.read(path), exception: false)
-    raise "invalid pid recorded in #{path}" unless pid
-    raise "orphaned process #{pid} from #{executable}" if alive?(pid)
+    File.readlines(path, chomp: true).each do |pid_text|
+      pid = Integer(pid_text, exception: false)
+      raise "invalid pid recorded in #{path}" unless pid
+      raise "orphaned process #{pid} from #{executable}" if alive?(pid)
+    end
   end
 
   pattern = Regexp.escape(executable)
@@ -517,6 +541,31 @@ def assert_discovery_signal_cleanup
   end
 end
 
+def assert_discovery_retries_after_timeout
+  Dir.mktmpdir('recipeswipe-discovery-retry') do |directory|
+    bin = File.join(directory, 'bin')
+    FileUtils.mkdir_p(bin)
+    xcrun = File.join(bin, 'xcrun')
+    xcodebuild = File.join(bin, 'xcodebuild')
+    attempts_path = File.join(directory, 'xcrun-attempts')
+    flaky_xcrun(xcrun, attempts_path)
+    fake_xcodebuild(xcodebuild)
+    env = base_env(directory, bin, xcrun, xcodebuild).merge(
+      'RECIPESWIPE_SIMCTL_TIMEOUT' => '20',
+      'FAKE_XCODEBUILD_MODE' => 'success'
+    )
+
+    result = run_script(:test, env, directory, 'discovery-retry', guard_seconds: 70)
+    raise 'simulator discovery retry required external kill' if result.externally_timed_out
+    raise "simulator discovery retry failed: #{result.output}" unless result.status&.success?
+    attempts = File.read(attempts_path).strip
+    raise "simulator discovery did not retry within its three-attempt budget (attempts=#{attempts.inspect})" unless %w[2 3].include?(attempts)
+    raise 'simulator discovery retry diagnostic missing' unless result.output.include?('retrying simulator discovery')
+    raise "discovery retry left temporary paths: #{temporary_runner_paths(directory).join(', ')}" unless temporary_runner_paths(directory).empty?
+    assert_no_processes([], xcrun)
+  end
+end
+
 failures = []
 
 begin
@@ -552,7 +601,7 @@ begin
     child_pid = File.join(directory, 'xcrun-child.pid')
     write_executable(xcrun, <<~SH)
       #!/bin/sh
-      printf '%s\n' "$$" > #{Shellwords.escape(parent_pid)}
+      printf '%s\n' "$$" >> #{Shellwords.escape(parent_pid)}
       trap '' HUP INT TERM
       sh -c 'trap "" HUP INT TERM; sleep 600' &
       printf '%s\n' "$!" > #{Shellwords.escape(child_pid)}
@@ -566,10 +615,12 @@ begin
       'XCRUN' => xcrun
     )
 
-    result = run_script(:test, env, directory, 'discovery')
+    result = run_script(:test, env, directory, 'discovery', guard_seconds: 15)
     raise 'simulator discovery required external kill' if result.externally_timed_out
     raise 'simulator discovery timeout did not exit 124' unless result.status&.exitstatus == 124
     raise 'simulator discovery timeout diagnostic missing' unless result.output.include?('simctl list devices timed out')
+    attempts = File.exist?(parent_pid) ? File.readlines(parent_pid, chomp: true) : []
+    raise "simulator discovery did not exhaust exactly three attempts (attempts=#{attempts.inspect})" unless attempts.length == 3
     raise "discovery timeout left temporary paths: #{temporary_runner_paths(directory).join(', ')}" unless temporary_runner_paths(directory).empty?
     assert_no_processes([parent_pid, child_pid], xcrun)
   end
@@ -611,6 +662,12 @@ end
 
 begin
   assert_discovery_signal_cleanup
+rescue StandardError => error
+  failures << error.message
+end
+
+begin
+  assert_discovery_retries_after_timeout
 rescue StandardError => error
   failures << error.message
 end
