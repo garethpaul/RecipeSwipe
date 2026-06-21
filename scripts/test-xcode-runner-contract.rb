@@ -131,6 +131,7 @@ def assert_watchdog_treats_eperm_probe_as_alive
     child = File.join(directory, 'child')
     shim = File.join(directory, 'process-kill-eperm.rb')
     descendant_pid = File.join(directory, 'descendant.pid')
+    eperm_probe_marker = File.join(directory, 'eperm-probe.marker')
     write_executable(child, <<~SH)
       #!/bin/sh
       sh -c 'trap "" HUP INT TERM; sleep 600' &
@@ -143,7 +144,10 @@ def assert_watchdog_treats_eperm_probe_as_alive
           alias recipeswipe_original_kill kill
 
           def kill(signal, pid)
-            raise Errno::EPERM if signal == 0 && pid.negative?
+            if signal == 0 && pid.negative?
+              File.write(ENV.fetch('RECIPESWIPE_EPERM_PROBE_MARKER'), pid.to_s)
+              raise Errno::EPERM
+            end
 
             recipeswipe_original_kill(signal, pid)
           end
@@ -153,6 +157,7 @@ def assert_watchdog_treats_eperm_probe_as_alive
     env = ENV.to_h.merge(
       'RECIPESWIPE_TIMEOUT_TERM_GRACE' => '0.2',
       'RECIPESWIPE_TIMEOUT_KILL_GRACE' => '0.2',
+      'RECIPESWIPE_EPERM_PROBE_MARKER' => eperm_probe_marker,
       'RUBYOPT' => [ENV['RUBYOPT'], "-r#{shim}"].compact.join(' ')
     )
     started = Process.clock_gettime(Process::CLOCK_MONOTONIC)
@@ -173,6 +178,7 @@ def assert_watchdog_treats_eperm_probe_as_alive
 
     raise 'watchdog did not preserve successful child status after EPERM probe' unless status.success?
     raise "watchdog EPERM cleanup was not prompt (#{elapsed.round(2)}s)" if elapsed >= 3
+    raise 'watchdog EPERM process-group probe was not exercised' unless File.exist?(eperm_probe_marker)
     assert_no_processes([descendant_pid], child)
   end
 end
