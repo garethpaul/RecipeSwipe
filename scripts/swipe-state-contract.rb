@@ -22,6 +22,7 @@ module SwipeStateContract
     require_text(failures, controller, 'gestureRecognizer.state == .cancelled || gestureRecognizer.state == .failed', 'handle every non-delegate gesture termination')
     require_text(failures, controller, 'swipeLifecycle.completeSwipe(intent: intent, token: deck.topToken)', 'complete only the active intent and generation')
     require_text(failures, controller, 'if swipeLifecycle.allowsCardLayout', 'preserve card geometry while a transition owns it')
+    failures << 'must refresh vendored swipe origins after card relayout' if controller.scan('rebuildVisibleCardsForCurrentLayoutIfNeeded()').length < 2
     require_text(failures, controller, 'pendingProgrammaticCard === recipeView', 'bind programmatic swipes to their pending card identity')
     require_text(failures, controller, 'pendingProgrammaticToken == deck.topToken', 'bind programmatic swipes to their pending deck token')
     require_text(failures, controller, 'recipeView.superview === self.view', 'reject detached programmatic cards')

@@ -34,7 +34,7 @@ persistence_plan = File.exist?(persistence_plan_path) ? File.read(persistence_pl
   'Canonical Verification',
   '/usr/bin/make check',
   '7 pure Swift deck and gesture tests',
-  '23 hostile swipe-state mutations',
+  '24 hostile swipe-state mutations',
   '13 hostile workflow mutations',
   'Hosted Verification',
   'macos-15'

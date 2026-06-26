@@ -92,7 +92,7 @@ Run the location-independent maintained gate:
 ```
 
 - The gate runs 7 pure Swift deck and gesture tests, the native XCTest suite on
-  an available iPhone simulator, 11 asset-contract tests, 23 hostile
+  an available iPhone simulator, 11 asset-contract tests, 24 hostile
   swipe-state mutations, 13 hostile workflow mutations, Xcode-runner contracts,
   and a generic arm64/x86_64 simulator build.
 - The swipe controller binds approval and completion to the active card identity,

@@ -15,6 +15,7 @@ final class RecipePickerViewController: UIViewController, @preconcurrency MDCSwi
     private var pendingProgrammaticToken: SwipeDeck<Recipe>.Token?
     private weak var gestureCard: RecipePickerView?
     private var gestureToken: SwipeDeck<Recipe>.Token?
+    private var visibleCardFrame: CGRect?
 
     private let nopeButton = UIButton(type: .system)
     private let likeButton = UIButton(type: .system)
@@ -43,8 +44,10 @@ final class RecipePickerViewController: UIViewController, @preconcurrency MDCSwi
         topCardView?.removeFromSuperview()
         bottomCardView?.removeFromSuperview()
         deck = SwipeDeck(items: recipes)
-        topCardView = deck.top.map { createRecipeView(frame: topCardFrame(), recipe: $0) }
+        let topFrame = topCardFrame()
+        topCardView = deck.top.map { createRecipeView(frame: topFrame, recipe: $0) }
         bottomCardView = deck.bottom.map { createRecipeView(frame: bottomCardFrame(), recipe: $0) }
+        visibleCardFrame = topCardView == nil ? nil : topFrame
 
         if let bottomCardView {
             view.addSubview(bottomCardView)
@@ -142,6 +145,7 @@ final class RecipePickerViewController: UIViewController, @preconcurrency MDCSwi
 
         topCardView = bottomCardView
         topCardView?.frame = topCardFrame()
+        visibleCardFrame = topCardView == nil ? nil : topCardFrame()
 
         let nextBottom = deck.bottom.map { createRecipeView(frame: bottomCardFrame(), recipe: $0) }
         bottomCardView = nextBottom
@@ -329,6 +333,7 @@ final class RecipePickerViewController: UIViewController, @preconcurrency MDCSwi
 
     private func layoutDeck() {
         if swipeLifecycle.allowsCardLayout {
+            rebuildVisibleCardsForCurrentLayoutIfNeeded()
             topCardView?.frame = topCardFrame()
             bottomCardView?.frame = bottomCardFrame()
         }
@@ -353,6 +358,30 @@ final class RecipePickerViewController: UIViewController, @preconcurrency MDCSwi
             width: bottomCardFrame().width,
             height: 60
         )
+        bringControlsToFront()
+    }
+
+    private func rebuildVisibleCardsForCurrentLayoutIfNeeded() {
+        guard topCardView != nil else {
+            visibleCardFrame = nil
+            return
+        }
+
+        let currentTopFrame = topCardFrame()
+        guard visibleCardFrame != currentTopFrame else { return }
+
+        topCardView?.removeFromSuperview()
+        bottomCardView?.removeFromSuperview()
+        topCardView = deck.top.map { createRecipeView(frame: currentTopFrame, recipe: $0) }
+        bottomCardView = deck.bottom.map { createRecipeView(frame: bottomCardFrame(), recipe: $0) }
+        visibleCardFrame = currentTopFrame
+
+        if let bottomCardView {
+            view.addSubview(bottomCardView)
+        }
+        if let topCardView {
+            view.addSubview(topCardView)
+        }
         bringControlsToFront()
     }
 

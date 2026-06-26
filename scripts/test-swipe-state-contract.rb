@@ -46,6 +46,7 @@ mutations = [
   ['terminal recognizer states', 'RecipeSwipe/RecipePickerViewController.swift', 'gestureRecognizer.state == .cancelled || gestureRecognizer.state == .failed', 'false'],
   ['owned completion', 'RecipeSwipe/RecipePickerViewController.swift', 'swipeLifecycle.completeSwipe(intent: intent, token: deck.topToken)', 'deck.topToken'],
   ['owned layout geometry', 'RecipeSwipe/RecipePickerViewController.swift', 'if swipeLifecycle.allowsCardLayout', 'if true'],
+  ['relayout swipe origin', 'RecipeSwipe/RecipePickerViewController.swift', 'rebuildVisibleCardsForCurrentLayoutIfNeeded()', ''],
   ['programmatic card identity', 'RecipeSwipe/RecipePickerViewController.swift', 'pendingProgrammaticCard === recipeView', 'true'],
   ['programmatic token identity', 'RecipeSwipe/RecipePickerViewController.swift', 'pendingProgrammaticToken == deck.topToken', 'true'],
   ['detached programmatic card', 'RecipeSwipe/RecipePickerViewController.swift', 'recipeView.superview === self.view', 'true'],

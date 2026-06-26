@@ -1,5 +1,31 @@
 # Changes
 
+## 2026-06-26 - P1 - Refresh swipe origins after card relayout
+
+### Summary
+
+Recreated idle visible cards when their layout frame changes so button-triggered
+swipes cannot use the vendored library's stale pre-rotation center.
+
+### Work completed
+
+- Traced `MDCSwipeToChoose` programmatic finalization to its private captured
+  original center.
+- Added a visible-card frame generation and rebuilt both visible cards only when
+  layout is idle and that generation changes.
+- Preserved deck tokens, recipe order, swipe ownership, and vendored sources.
+- Added a fail-closed contract and a 24th hostile swipe-state mutation.
+
+### Validation
+
+- Red-first swipe-state contract failed before the relayout refresh existed.
+- Portable structural, Swift core, Make authority, and source checks are run on
+  the exact PR head; hosted macOS remains responsible for UIKit integration.
+
+### Next action
+
+- Validate, review, and merge the exact green PR head.
+
 ## 2026-06-26 02:55 PDT - P2 - Define saved-recipe persistence boundary
 
 ### Summary
