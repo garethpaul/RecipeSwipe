@@ -10,71 +10,106 @@
 
 ## Overview
 
-`garethpaul/RecipeSwipe` is an Apple platform application or Objective-C/Swift sample. The "tinder style" swiping for recipes.
-
-This README is based on the checked-in source, manifests, scripts, and repository metadata on the `master` branch. The project language mix found during review was: Swift (8), C/C++ headers (1).
+`garethpaul/RecipeSwipe` is a preserved iOS prototype for swiping through local
+recipe cards, liking recipes, and skipping unwanted cards. The maintained
+baseline focuses on deterministic deck state, gesture safety, accessibility,
+and reproducible simulator verification rather than production persistence or
+network recipe data.
 
 ## Repository Contents
 
-- `Podfile` - Apple platform dependency metadata
-- `Podfile.lock` - Apple platform dependency metadata
-- `RecipeSwipe` - source or example code
-- `RecipeSwipe.xcodeproj` - Xcode project file
-- `RecipeSwipeTests` - source or example code
-- `CHANGES.md` - notable maintenance changes
-- `Makefile` - local verification entry points
-- `.github/workflows/check.yml` - hosted macOS structural validation
-- `docs/plans` - canonical completed maintenance plans
-- `plans` - completed maintenance plans
-- `scripts` - deterministic static iOS validation checks
-- `SECURITY.md` - security reporting and disclosure guidance
-- `VISION.md` - project direction and maintenance guardrails
-
-Additional scan context:
-
-- Source directories: RecipeSwipe, RecipeSwipeTests
-- Dependency and build manifests: Podfile, Podfile.lock
-- Entry points or build surfaces: RecipeSwipe.xcodeproj
-- Test-looking files: RecipeSwipeTests/Info.plist, RecipeSwipeTests/RecipeSwipeTests.swift
+- `RecipeSwipe/` - application source, local sample recipes, card/deck logic,
+  storyboard, and assets
+- `RecipeSwipeTests/` - native XCTest coverage for maintained app behavior
+- `Tests/RecipeSwipeCoreTests/` - pure Swift package tests for deck state
+- `RecipeSwipe.xcworkspace` - CocoaPods-integrated Xcode entry point
+- `RecipeSwipe.xcodeproj` - Swift 5/iOS 12 project settings
+- `Pods/`, `Podfile`, and `Podfile.lock` - checked-in legacy swipe dependency
+- `Package.swift` - dependency-free Swift package surface for core deck tests
+- `scripts/` and `Makefile` - canonical source, asset, mutation, simulator,
+  build, workflow, and Make authority gates
+- `docs/plans/` - completed maintenance decisions and validation evidence
 
 ## Getting Started
 
-### Prerequisites
+### Supported Project Baseline
 
 - Git
-- macOS with Xcode for building Apple platform projects
-- CocoaPods if dependencies need to be installed
+- macOS with Xcode and at least one available iPhone simulator
+- Swift 5 with an iOS 12 deployment target, as pinned across the project and
+  target build configurations
+- The checked-in `RecipeSwipe.xcworkspace`, vendored `Pods/`, and lockfile with
+  CocoaPods 0.35.0 provenance
+- Ruby for the source, workflow, mutation, timeout, and runner contracts
 
 ### Setup
 
 ```bash
 git clone https://github.com/garethpaul/RecipeSwipe.git
 cd RecipeSwipe
-pod install
+open RecipeSwipe.xcworkspace
 ```
 
-The setup commands above are derived from repository files. Legacy mobile, Python, or JavaScript samples may require older SDKs or package versions than a modern workstation uses by default.
+Choose the shared `RecipeSwipe` scheme. The project and test runners disable
+code signing for simulator verification, so local signing changes are not part
+of routine validation.
+
+### Vendored Dependency Boundary
+
+The repository checks in its workspace and legacy `MDCSwipeToChoose` pod.
+Routine builds and hosted verification do not install or resolve CocoaPods.
+Do not run pod update as routine setup. If dependency reconstruction becomes
+necessary, use a disposable worktree with a historically compatible CocoaPods
+version, review every generated project and lockfile change, and keep that work
+separate from app behavior changes.
 
 ## Running or Using the Project
 
-- Open `RecipeSwipe.xcworkspace` in Xcode, choose the `RecipeSwipe` scheme, and run it on an iOS 12 or newer simulator/device.
+- Open `RecipeSwipe.xcworkspace`, choose the shared `RecipeSwipe` scheme, and
+  run on an available iPhone simulator. The current sample data is local and
+  hardcoded; liked recipes remain only in the process-memory array.
 
 ## Testing and Verification
 
-- `make check` is location-independent and runs the complete maintained gate.
-- The gate runs 4 pure Swift deck/gesture tests, the native XCTest suite on an
-  available iPhone simulator, asset integrity checks, 25 hostile state/workflow
-  mutations, and a generic arm64/x86_64 simulator build.
-- Simulator discovery and every `xcodebuild` phase run in bounded process groups;
-  set `RECIPESWIPE_SIMCTL_TIMEOUT` or `RECIPESWIPE_XCODEBUILD_TIMEOUT` to adjust
-  their default 15-second and 600-second limits.
+### Dynamic Simulator Selection
+
+`scripts/xcode-test.sh` asks `simctl` for available devices and selects the
+first available iPhone simulator by UDID rather than depending on a retired
+model name. Discovery gets three 20-second discovery attempts. The XCTest and
+generic simulator build phases use a 600-second xcodebuild timeout. Override
+the defaults with `RECIPESWIPE_SIMCTL_TIMEOUT` and
+`RECIPESWIPE_XCODEBUILD_TIMEOUT` only when diagnosing a known slow host.
+
+### Canonical Verification
+
+Run the location-independent maintained gate:
+
+```sh
+/usr/bin/make check
+```
+
+- The gate runs 7 pure Swift deck and gesture tests, the native XCTest suite on
+  an available iPhone simulator, 11 asset-contract tests, 23 hostile
+  swipe-state mutations, 13 hostile workflow mutations, Xcode-runner contracts,
+  and a generic arm64/x86_64 simulator build.
 - The swipe controller binds approval and completion to the active card identity,
   uses generation tokens for exactly-once deck consumption, validates finite
   aligned translation/velocity thresholds, and rejects stale pan callbacks.
 - Recipe names are control-character sanitized and bounded; card names use
   Dynamic Type, two-line resizing, and explicit VoiceOver action descriptions.
-- GitHub Actions runs the same gate on macOS 15 with credential-free checkout,
-  read-only permissions, a pinned checkout action, and manual dispatch.
+
+### Hosted Verification
+
+GitHub Actions runs the same gate on `macos-15` for pushes, pull requests, and
+manual dispatches. Hosted verification uses credential-free checkout,
+read-only permissions, a commit-pinned action, bounded simulator/Xcode runners,
+the native XCTest suite, and the generic simulator build without reinstalling
+the archived CocoaPods dependency.
+
+On a non-macOS host, run the portable `structural`, `core-test`, and `root-test`
+targets in a Swift/Ruby environment. The complete `check` target intentionally
+requires `xcrun`, an available iPhone simulator, and `xcodebuild`; a missing
+Apple toolchain is a blocked native gate, not a passing skip.
 
 ## Configuration and Secrets
 
