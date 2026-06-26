@@ -10,6 +10,42 @@ root = File.expand_path('..', __dir__)
 failures = SwipeStateContract.validate(root)
 asset_root = Pathname.new(root).join('RecipeSwipe/Images.xcassets')
 makefile = File.read(File.join(root, 'Makefile'))
+readme = File.read(File.join(root, 'README.md'), encoding: 'UTF-8').split.join(' ')
+vision = File.read(File.join(root, 'VISION.md'), encoding: 'UTF-8').split.join(' ')
+changes = File.read(File.join(root, 'CHANGES.md'), encoding: 'UTF-8').split.join(' ')
+setup_plan_path = File.join(root, 'docs/plans/2026-06-26-recipeswipe-setup-guide.md')
+setup_plan = File.exist?(setup_plan_path) ? File.read(setup_plan_path) : ''
+
+[
+  'Supported Project Baseline',
+  'Swift 5 with an iOS 12 deployment target',
+  'CocoaPods 0.35.0 provenance',
+  'open RecipeSwipe.xcworkspace',
+  'Vendored Dependency Boundary',
+  'Do not run pod update as routine setup',
+  'Dynamic Simulator Selection',
+  'first available iPhone simulator',
+  'three 20-second discovery attempts',
+  '600-second xcodebuild timeout',
+  'Canonical Verification',
+  '/usr/bin/make check',
+  '7 pure Swift deck and gesture tests',
+  '23 hostile swipe-state mutations',
+  '13 hostile workflow mutations',
+  'Hosted Verification',
+  'macos-15'
+].each do |contract|
+  failures << "README setup guide must preserve #{contract}" unless readme.include?(contract)
+end
+
+unless vision.include?('Keep README setup and simulator guidance synchronized with the workspace, vendored dependencies, and Xcode runners') &&
+       changes.include?('source-backed RecipeSwipe setup and simulator guide')
+  failures << 'Roadmap and change history must preserve the RecipeSwipe setup-guide boundary'
+end
+
+unless setup_plan.include?('## Status: Completed') && setup_plan.include?('Replace generated RecipeSwipe setup notes')
+  failures << 'RecipeSwipe setup guide plan must record completed implementation evidence'
+end
 
 [
   'override SHELL := /bin/sh',

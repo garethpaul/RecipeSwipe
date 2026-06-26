@@ -1,5 +1,73 @@
 # Changes
 
+## 2026-06-26 01:59 - P2 - Correct setup and simulator guidance
+
+### Summary
+
+Replaced generated setup notes with a source-backed RecipeSwipe setup and
+simulator guide. Corrected the documented simulator discovery timeout from 15
+seconds to the maintained runner's three 20-second attempts.
+
+### Work completed
+
+- Documented the Swift 5/iOS 12 project baseline, shared workspace and scheme,
+  checked-in pod boundary, CocoaPods 0.35.0 provenance, and code-signing-free
+  simulator path.
+- Documented dynamic first-available-iPhone selection, UDID targeting, exact
+  discovery and Xcode timeout defaults, canonical Make verification, and hosted
+  `macos-15` coverage.
+- Warned against routine `pod update` or unreviewed dependency regeneration.
+- Retired only the completed setup roadmap item; persistence design remains a
+  separate next priority.
+
+### Threads
+
+- None. The cycle was completed directly after excluding repositories with
+  active public pull requests or pending default-branch checks.
+
+### Files changed
+
+- `README.md` — added project, dependency, simulator, and verification setup guidance.
+- `VISION.md` — recorded the maintained setup boundary and removed the completed item.
+- `scripts/check-ios-source.rb` — added fail-closed setup-guide contracts.
+- `docs/plans/2026-06-26-recipeswipe-setup-guide.md` — recorded the implementation plan.
+
+### Validation
+
+- Ruby source contract — expected red result observed in a clean Ruby 3.3 container.
+- Eighteen hostile setup-guide mutations — all rejected, covering project
+  versions, workspace, vendored dependencies, simulator selection, timeout and
+  test counts, canonical/hosted gates, roadmap, history, and plan status.
+- `/usr/bin/make structural core-test root-test` — passed from the checkout and
+  an external working directory in a clean Swift 6.2.3/Ruby 3.2 container: 7
+  Swift tests, 11 asset tests, 23 swipe-state mutations, 13 workflow mutations,
+  Xcode-runner contracts, and 56 Make authority cases.
+- `/usr/bin/make check` — portable phases passed, then the Linux container
+  stopped at the intentional native boundary because `xcrun` is unavailable.
+- Ruby ASCII-locale probe — passed after documentation reads were made
+  explicitly UTF-8.
+
+### Bugs / findings
+
+- README documented a 15-second simulator discovery timeout, but
+  `scripts/xcode-test.sh` defaults to 20 seconds and retries three times.
+- README documented four pure Swift tests and 25 combined state/workflow
+  mutations; the maintained gate currently runs seven Swift tests, 23
+  swipe-state mutations, and 13 workflow mutations.
+- Routine `pod install`/`pod update` guidance was unsafe for the checked-in
+  CocoaPods 0.35.0-era workspace and vendored dependency graph.
+
+### Blockers
+
+- This Linux host has no Ruby, Swift, Xcode, simulator, or CocoaPods runtime;
+  portable validation must use clean containers and hosted macOS remains
+  required for native XCTest/build evidence.
+
+### Next action
+
+- Document the intended local persistence path for liked recipes without
+  introducing storage or network behavior in the same change.
+
 ## 2026-06-21
 
 - Hardened all seven pre-existing Make gates against caller-controlled root and

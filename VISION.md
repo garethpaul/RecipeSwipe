@@ -42,10 +42,11 @@ Priority:
 - Keep hosted validation separate from unsupported modern Xcode builds and
   archived CocoaPods installation
 - Keep completed maintenance plans under `docs/plans`
+- Keep README setup and simulator guidance synchronized with the workspace,
+  vendored dependencies, and Xcode runners
 
 Next priorities:
 
-- Add README setup notes for Xcode, CocoaPods, and simulator expectations
 - Document the intended persistence path for saved recipes
 - Modernize Swift syntax in a dedicated pass
 
