@@ -44,10 +44,11 @@ Priority:
 - Keep completed maintenance plans under `docs/plans`
 - Keep README setup and simulator guidance synchronized with the workspace,
   vendored dependencies, and Xcode runners
+- Keep the documented local Core Data persistence contract separate from swipe
+  behavior until stable recipe identity and store tests exist
 
 Next priorities:
 
-- Document the intended persistence path for saved recipes
 - Modernize Swift syntax in a dedicated pass
 
 Contribution rules:

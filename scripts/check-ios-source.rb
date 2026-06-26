@@ -15,6 +15,10 @@ vision = File.read(File.join(root, 'VISION.md'), encoding: 'UTF-8').split.join('
 changes = File.read(File.join(root, 'CHANGES.md'), encoding: 'UTF-8').split.join(' ')
 setup_plan_path = File.join(root, 'docs/plans/2026-06-26-recipeswipe-setup-guide.md')
 setup_plan = File.exist?(setup_plan_path) ? File.read(setup_plan_path) : ''
+persistence_path = File.join(root, 'docs/persistence.md')
+persistence_document = File.exist?(persistence_path) ? File.read(persistence_path, encoding: 'UTF-8').split.join(' ') : ''
+persistence_plan_path = File.join(root, 'docs/plans/2026-06-26-recipeswipe-persistence-path.md')
+persistence_plan = File.exist?(persistence_plan_path) ? File.read(persistence_plan_path, encoding: 'UTF-8').split.join(' ') : ''
 
 [
   'Supported Project Baseline',
@@ -45,6 +49,28 @@ end
 
 unless setup_plan.include?('## Status: Completed') && setup_plan.include?('Replace generated RecipeSwipe setup notes')
   failures << 'RecipeSwipe setup guide plan must record completed implementation evidence'
+end
+
+[
+  'liked recipes remain process-memory-only today',
+  'Core Data SQLite store',
+  'stable recipe identifier',
+  'Do not persist `UIImage`',
+  'idempotent by recipe ID',
+  'local-only',
+  'in-memory Core Data store'
+].each do |contract|
+  failures << "Persistence design must preserve #{contract}" unless persistence_document.include?(contract)
+end
+
+unless readme.include?('See `docs/persistence.md` for the intended local Core Data path') &&
+       vision.include?('Keep the documented local Core Data persistence contract separate from swipe behavior') &&
+       changes.include?('Documented the intended Core Data path for saved recipes')
+  failures << 'Roadmap and change history must preserve the RecipeSwipe persistence boundary'
+end
+
+unless persistence_plan.include?('## Status: Completed') && persistence_plan.include?('initial 2014 implementation marked both save and skip handling with a Core Data TODO')
+  failures << 'RecipeSwipe persistence plan must record completed source evidence'
 end
 
 [
