@@ -68,6 +68,9 @@ separate from app behavior changes.
 - Open `RecipeSwipe.xcworkspace`, choose the shared `RecipeSwipe` scheme, and
   run on an available iPhone simulator. The current sample data is local and
   hardcoded; liked recipes remain only in the process-memory array.
+- See `docs/persistence.md` for the intended local Core Data path, stable recipe
+  identity, metadata-only image policy, and tests required before the app can
+  claim that likes survive relaunch.
 
 ## Testing and Verification
 
@@ -169,6 +172,9 @@ Apple toolchain is a blocked native gate, not a passing skip.
   callback enforcement and hostile mutation coverage.
 - See `docs/plans/2026-06-16-recipe-name-label-autoresizing.md` for the recipe
   name label resizing contract and hostile mutation coverage.
+- See `docs/persistence.md` for the intended local Core Data path for saved
+  recipes. It documents future architecture only; current likes remain
+  process-memory-only.
 
 ## Contributing
 

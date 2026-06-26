@@ -1,5 +1,66 @@
 # Changes
 
+## 2026-06-26 02:55 PDT - P2 - Define saved-recipe persistence boundary
+
+### Summary
+
+Documented the intended Core Data path for saved recipes while preserving the
+truth that the current prototype keeps likes only in process memory.
+
+### Work completed
+
+- Recovered the original 2014 Core Data TODO from source history.
+- Defined a local SQLite-backed Core Data store behind an app-owned protocol.
+- Required stable recipe identity, idempotent saves, metadata-only image
+  references, explicit removal, and model versioning.
+- Separated saved-list storage from deck consumption and gesture ownership.
+- Defined in-memory, disk/relaunch, failure, and migration tests required before
+  runtime persistence can be claimed.
+- Added a portable documentation contract and reconciled the completed roadmap
+  item.
+
+### Threads
+
+- Started: saved-recipe persistence architecture documentation.
+- Continued: local-data boundary — retained hardcoded recipes and no network or
+  CloudKit behavior.
+- Stopped: none.
+
+### Files changed
+
+- `docs/persistence.md` — records current behavior and the future Core Data
+  architecture.
+- `scripts/check-ios-source.rb` — fails closed if persistence guarantees drift.
+- `README.md`, `VISION.md`, and the completed plan — expose and preserve the
+  decision.
+
+### Validation
+
+- Red-first containerized source check — failed on all missing persistence,
+  roadmap, history, and plan contracts.
+- Ruby 3.3 source validation, 11 asset tests, 23 swipe mutations, 13 workflow
+  mutations, Xcode-runner contracts, 7 Swift tests, and 56 Make authority cases
+  — passed from checkout and `/tmp` in a Swift 6.0/Ruby container.
+- Full `make check` reached the expected missing-`xcrun` Linux boundary; hosted
+  macOS remains responsible for XCTest and simulator build evidence.
+- Ruby and shell syntax checks plus `git diff --check` — passed.
+- Hosted exact-head checks, review, and merge remain the next action.
+
+### Bugs / findings
+
+- P2 documentation: the roadmap named persistence but did not define identity,
+  image storage, duplicate-save, failure, migration, or UI ownership semantics.
+
+### Blockers
+
+- No runtime blocker because this cycle does not claim or implement persistence.
+- Local Apple tooling is unavailable; the portable gates passed in containers.
+
+### Next action
+
+- Run portable and hosted exact-head validation, then review and merge the
+  focused documentation PR.
+
 ## 2026-06-26 01:59 - P2 - Correct setup and simulator guidance
 
 ### Summary
