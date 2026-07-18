@@ -71,6 +71,83 @@ assert_commands_stayed_in_checkout() {
   done <"$COMMAND_LOG"
 }
 
+# The canonical command each public target must delegate to, in recipe order.
+# This is a closed world: every executed target is compared against this list
+# exactly, so neutering, reordering, dropping, or appending a runner fails --
+# a non-empty command log is not evidence that the *expected* runner ran.
+expected_commands() {
+  case "$1" in
+    lint)
+      printf '%s\n' \
+        'ruby scripts/check-ios-source.rb'
+      ;;
+    structural)
+      printf '%s\n' \
+        'ruby scripts/check-ios-source.rb' \
+        'ruby scripts/test-asset-contract.rb' \
+        'ruby scripts/test-swipe-state-contract.rb' \
+        'ruby scripts/test-xcode-runner-contract.rb' \
+        'ruby scripts/test-workflow-contract.rb'
+      ;;
+    core-test)
+      printf '%s\n' \
+        'scripts/swift-test.sh'
+      ;;
+    test)
+      printf '%s\n' \
+        'scripts/swift-test.sh' \
+        'scripts/xcode-test.sh'
+      ;;
+    build)
+      printf '%s\n' \
+        'scripts/xcode-build.sh'
+      ;;
+    root-test)
+      printf '%s\n' \
+        'scripts/test-makefile-root.sh'
+      ;;
+    verify | check)
+      printf '%s\n' \
+        'ruby scripts/check-ios-source.rb' \
+        'ruby scripts/test-asset-contract.rb' \
+        'ruby scripts/test-swipe-state-contract.rb' \
+        'ruby scripts/test-xcode-runner-contract.rb' \
+        'ruby scripts/test-workflow-contract.rb' \
+        'scripts/swift-test.sh' \
+        'scripts/xcode-test.sh' \
+        'scripts/xcode-build.sh' \
+        'scripts/test-makefile-root.sh'
+      ;;
+    *)
+      printf '%s\n' "no runner-invocation contract declared for target: $1" >&2
+      exit 1
+      ;;
+  esac
+}
+
+assert_commands_match_contract() {
+  scenario=$1
+  target=$2
+  expected="$TEMP_ROOT/expected-commands"
+  actual="$TEMP_ROOT/actual-commands"
+  expected_commands "$target" >"$expected"
+  # assert_commands_stayed_in_checkout has already proven every line carries the
+  # "$CHECKOUT|" prefix, so strip it literally rather than by pattern: the
+  # checkout path deliberately contains glob and regex metacharacters.
+  : >"$actual"
+  while IFS= read -r command; do
+    printf '%s\n' "${command#"$CHECKOUT|"}" >>"$actual"
+  done <"$COMMAND_LOG"
+  if ! cmp -s "$expected" "$actual"; then
+    printf '%s\n' "$scenario $target did not run its canonical runners" >&2
+    printf '%s\n' 'expected:' >&2
+    cat "$expected" >&2
+    printf '%s\n' 'actual:' >&2
+    cat "$actual" >&2
+    exit 1
+  fi
+}
+
 assert_output_contains() {
   expected=$1
   file=$2
@@ -124,6 +201,7 @@ run_case() {
     exit 1
   fi
   assert_commands_stayed_in_checkout "$scenario" "$target"
+  assert_commands_match_contract "$scenario" "$target"
 }
 
 for target in build check core-test lint root-test structural test verify; do
@@ -274,4 +352,4 @@ grep -Fq 'caller-added double-colon recipes' "$ROOT_DIR/README.md"
 grep -Fq "$BOUNDARY_TEXT" "$ROOT_DIR/docs/plans/2026-06-21-safe-make-root.md"
 grep -Fq 'caller-added double-colon recipes' "$ROOT_DIR/docs/plans/2026-06-21-safe-make-root.md"
 
-printf '%s\n' "Makefile root tests passed: 56 executed target/authority cases, 2 MAKEFILE_LIST rejections, 1 MAKEFILES rejection, 3 multi-Makefile rejections including the combined eight-recipe bypass, 1 later target-specific shell rejection, 5 MAKEFLAGS rejections, 1 dollar-path fail-closed case, and documented override/double-colon caller boundaries"
+printf '%s\n' "Makefile root tests passed: 56 executed target/authority cases each asserting its canonical runner-invocation contract, 2 MAKEFILE_LIST rejections, 1 MAKEFILES rejection, 3 multi-Makefile rejections including the combined eight-recipe bypass, 1 later target-specific shell rejection, 5 MAKEFLAGS rejections, 1 dollar-path fail-closed case, and documented override/double-colon caller boundaries"

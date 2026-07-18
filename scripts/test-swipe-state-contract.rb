@@ -64,5 +64,13 @@ mutations = [
   ['retired simulator', 'Makefile', 'scripts/xcode-test.sh', 'xcodebuild -destination "platform=iOS Simulator,name=iPhone 6"']
 ]
 
+# README documents this suite as "24 hostile swipe-state mutations" and
+# check-ios-source.rb pins that claim, but a pinned sentence cannot notice
+# mutations being deleted from the table above. Reconcile the two here.
+DOCUMENTED_MUTATIONS = 24
+unless mutations.length == DOCUMENTED_MUTATIONS
+  abort("expected #{DOCUMENTED_MUTATIONS} documented swipe-state mutations, found #{mutations.length}")
+end
+
 mutations.each { |mutation| reject_mutation(*mutation) }
 puts "swipe state contract tests passed (#{mutations.length} mutations rejected)"
