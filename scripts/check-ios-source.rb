@@ -106,8 +106,32 @@ end
   failures << "Makefile must preserve #{contract}" unless makefile.include?(contract)
 end
 
+# Substring pins above prove a runner is *mentioned*; they cannot prove it still
+# runs, because commenting a recipe out leaves every substring byte-identical.
+# Pin each canonical invocation as a whole, tab-indented recipe line instead.
+# scripts/test-makefile-root.sh then proves each target executes exactly its
+# canonical set: neither check alone can detect its own recipe being neutered.
+makefile_lines = makefile.lines.map(&:chomp)
+[
+  "\tcd '$(REPOSITORY_ROOT_LITERAL)' && ruby scripts/check-ios-source.rb",
+  "\tcd '$(REPOSITORY_ROOT_LITERAL)' && ruby scripts/test-asset-contract.rb",
+  "\tcd '$(REPOSITORY_ROOT_LITERAL)' && ruby scripts/test-swipe-state-contract.rb",
+  "\tcd '$(REPOSITORY_ROOT_LITERAL)' && ruby scripts/test-xcode-runner-contract.rb",
+  "\tcd '$(REPOSITORY_ROOT_LITERAL)' && ruby scripts/test-workflow-contract.rb",
+  "\tcd '$(REPOSITORY_ROOT_LITERAL)' && scripts/swift-test.sh",
+  "\tcd '$(REPOSITORY_ROOT_LITERAL)' && scripts/xcode-test.sh",
+  "\tcd '$(REPOSITORY_ROOT_LITERAL)' && scripts/xcode-build.sh",
+  "\tcd '$(REPOSITORY_ROOT_LITERAL)' && scripts/test-makefile-root.sh"
+].each do |recipe|
+  next if makefile_lines.include?(recipe)
+
+  failures << "Makefile must invoke #{recipe.strip} as an executable recipe line"
+end
+
 root_test = File.read(File.join(root, 'scripts/test-makefile-root.sh'))
-['RecipeSwipe', '56 executed target/authority cases', '2 MAKEFILE_LIST rejections', '1 MAKEFILES rejection', '3 multi-Makefile rejections including the combined eight-recipe bypass', '1 later target-specific shell rejection', '5 MAKEFLAGS rejections', '1 dollar-path fail-closed case', 'documented override/double-colon caller boundaries', 'MAKEFILE_LIST must not be overridden'].each do |contract|
+['RecipeSwipe', '56 executed target/authority cases each asserting its canonical runner-invocation contract',
+ 'assert_commands_match_contract "$scenario" "$target"', 'no runner-invocation contract declared for target',
+ '2 MAKEFILE_LIST rejections', '1 MAKEFILES rejection', '3 multi-Makefile rejections including the combined eight-recipe bypass', '1 later target-specific shell rejection', '5 MAKEFLAGS rejections', '1 dollar-path fail-closed case', 'documented override/double-colon caller boundaries', 'MAKEFILE_LIST must not be overridden'].each do |contract|
   failures << "Makefile root test must preserve #{contract}" unless root_test.include?(contract)
 end
 

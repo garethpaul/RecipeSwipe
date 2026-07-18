@@ -66,6 +66,14 @@ mutations = {
   'pod installation' => mutate('pod installation', 'run: make check', 'run: pod install && make check')
 }
 
+# README documents this suite as "13 hostile workflow mutations" and
+# check-ios-source.rb pins that claim, but a pinned sentence cannot notice
+# mutations being deleted from the table above. Reconcile the two here.
+DOCUMENTED_MUTATIONS = 13
+unless mutations.length == DOCUMENTED_MUTATIONS
+  abort("expected #{DOCUMENTED_MUTATIONS} documented workflow mutations, found #{mutations.length}")
+end
+
 mutations.each do |description, workflow|
   assert_invalid(description, workflow)
 end
